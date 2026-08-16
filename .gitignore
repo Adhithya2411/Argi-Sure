@@ -1,0 +1,8 @@
+node_modules/
+*.wasm
+*.zkey
+*.ptau
+*_js/
+*.r1cs
+*.sym
+circom/
