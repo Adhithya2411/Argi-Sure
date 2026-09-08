@@ -1,0 +1,27 @@
+{
+  "name": "project_workspace",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Adhithya2411/Argi-Sure.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Adhithya2411/Argi-Sure/issues"
+  },
+  "homepage": "https://github.com/Adhithya2411/Argi-Sure#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "ethers": "^6.17.0",
+    "hardhat": "^2.29.1",
+    "snarkjs": "^0.7.6"
+  }
+}
