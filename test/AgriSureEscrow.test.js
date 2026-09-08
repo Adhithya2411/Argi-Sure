@@ -40,7 +40,9 @@ describe("AgriSureEscrow", function () {
     expect(balance).to.equal(fundAmount);
   });
 
-  it("Should allow owner to trigger a disaster", async function () {
+  it("Should allow owner to set oracle and oracle to trigger a disaster", async function () {
+    await escrow.setOracle(owner.address);
+
     // Read public inputs to get disaster zone coordinates
     const publicJsonPath = path.join(__dirname, "../zk-circuit/public.json");
     const publicInputs = JSON.parse(fs.readFileSync(publicJsonPath, "utf8"));

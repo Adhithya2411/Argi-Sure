@@ -12,6 +12,7 @@ interface IGroth16Verifier {
 
 contract AgriSureEscrow {
     address public owner;
+    address public oracle;
     IGroth16Verifier public verifier;
     
     uint256 public constant PAYOUT_AMOUNT = 0.1 ether;
@@ -30,15 +31,26 @@ contract AgriSureEscrow {
     event EscrowFunded(address funder, uint256 amount);
     event DisasterTriggered(uint256 minLat, uint256 maxLat, uint256 minLon, uint256 maxLon);
     event PayoutClaimed(address farmer, uint256 amount);
+    event OracleUpdated(address oldOracle, address newOracle);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can perform this action");
         _;
     }
 
+    modifier onlyOracle() {
+        require(msg.sender == oracle, "Only the Oracle can perform this action");
+        _;
+    }
+
     constructor(address _verifierAddress) {
         owner = msg.sender;
         verifier = IGroth16Verifier(_verifierAddress);
+    }
+
+    function setOracle(address _oracle) external onlyOwner {
+        emit OracleUpdated(oracle, _oracle);
+        oracle = _oracle;
     }
 
     receive() external payable {
@@ -50,7 +62,7 @@ contract AgriSureEscrow {
         uint256 _maxLat,
         uint256 _minLon,
         uint256 _maxLon
-    ) external onlyOwner {
+    ) external onlyOracle {
         activeDisaster = DisasterZone({
             minLat: _minLat,
             maxLat: _maxLat,
