@@ -62,6 +62,16 @@ describe("AgriSureEscrow", function () {
     expect(activeDisaster.isActive).to.be.true;
   });
 
+  it("Should allow farmer to commit a policy using a location hash", async function () {
+    const dummyHash = ethers.id("dummy_location_hash");
+    await expect(escrow.connect(farmer).commitPolicy(dummyHash))
+      .to.emit(escrow, "PolicyCommitted")
+      .withArgs(farmer.address, dummyHash);
+      
+    const isReg = await escrow.isRegistered(farmer.address);
+    expect(isReg).to.be.true;
+  });
+
   it("Should allow farmer to claim payout with a valid zero-knowledge proof", async function () {
     const proofPath = path.join(__dirname, "../zk-circuit/proof.json");
     const publicJsonPath = path.join(__dirname, "../zk-circuit/public.json");

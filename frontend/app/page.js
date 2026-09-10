@@ -1,111 +1,63 @@
-"use client";
-import { useState } from 'react';
-import { generateProof } from '../utils/zkp';
-import { ethers } from 'ethers';
+import Link from 'next/link';
 import styles from './page.module.css';
 
-export default function Home() {
-  const [lat, setLat] = useState('12.9755');
-  const [lon, setLon] = useState('79.1555');
-  const [status, setStatus] = useState('');
-  const [error, setError] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const handleClaim = async () => {
-    setIsProcessing(true);
-    setStatus('Fetching active disaster zone from Oracle API...');
-    setError('');
-
-    try {
-      // 1. Fetch the real Oracle API Endpoint
-      const res = await fetch('/api/disaster-zone');
-      const disasterZone = await res.json();
-      
-      setStatus('Generating Zero-Knowledge Proof locally in browser...');
-
-      // 2. Generate ZKP locally using snarkjs
-      const { proof, publicSignals, calldata } = await generateProof(
-        disasterZone,
-        { lat: parseFloat(lat), lon: parseFloat(lon) }
-      );
-
-      setStatus('Connecting to Web3 Wallet...');
-
-      // 3. Connect to Web3 (MetaMask)
-      if (!window.ethereum) throw new Error("Please install MetaMask!");
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-
-      // 4. Submit to smart contract (Assuming Hardhat local address)
-      setStatus('Submitting cryptographic proof to Escrow smart contract...');
-      
-      // Note: In real app, we use the deployed contract address and ABI
-      // We will skip actual contract interaction here for demo UI purposes 
-      // since the hardhat node might not be running.
-      
-      await new Promise(r => setTimeout(r, 2000)); // Simulate tx delay
-
-      setStatus('🎉 Payout Successfully Claimed! Smart Contract verified location without exposing GPS.');
-      setIsProcessing(false);
-
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "An error occurred during verification.");
-      setIsProcessing(false);
-      setStatus('');
-    }
-  };
-
+export default function LandingPage() {
   return (
     <div className={styles.container}>
-      <main className={styles.main}>
-        <h1 className={styles.title}>Zk-AgriSure Dashboard</h1>
-        
-        <div className={styles.glassCard}>
-          <div className={styles.inputGroup}>
-            <label className={styles.label}>Farm Latitude (Hidden from Blockchain)</label>
-            <input 
-              type="text" 
-              className={styles.input} 
-              value={lat} 
-              onChange={(e) => setLat(e.target.value)}
-              placeholder="e.g. 12.9755"
-            />
-          </div>
-          
-          <div className={styles.inputGroup}>
-            <label className={styles.label}>Farm Longitude (Hidden from Blockchain)</label>
-            <input 
-              type="text" 
-              className={styles.input} 
-              value={lon} 
-              onChange={(e) => setLon(e.target.value)}
-              placeholder="e.g. 79.1555"
-            />
-          </div>
+      <header className={styles.header}>
+        <div className={styles.logo}>Zk-AgriSure</div>
+        <nav className={styles.nav}>
+          <a href="#features" className={styles.navLink}>Features</a>
+          <a href="#architecture" className={styles.navLink}>Architecture</a>
+          <Link href="/dashboard" className={styles.navLink}>Launch App</Link>
+        </nav>
+      </header>
 
-          <button 
-            className={styles.button}
-            onClick={handleClaim}
-            disabled={isProcessing}
-          >
-            {isProcessing ? 'Processing Cryptography...' : 'Generate ZKP & Claim Insurance'}
-          </button>
+      <main className={styles.hero}>
+        <div className={styles.heroGrid}></div>
+        <div className={styles.heroContent}>
+          <div className={styles.badge}>DECENTRALIZED PARAMETRIC INSURANCE</div>
+          <h1 className={styles.title}>Privacy-Preserving Crop Insurance Architecture</h1>
+          <p className={styles.subtitle}>
+            Bridges DeFi and enterprise compliance by using Zero-Knowledge spatial verification to execute sensitive institutional agreements without compromising underlying GPS intelligence.
+          </p>
+          
+          <div className={styles.actions}>
+            <Link href="/dashboard" className={styles.primaryButton}>
+              Connect Wallet to Enter App
+            </Link>
+            <a href="#features" className={styles.secondaryButton}>
+              Learn More
+            </a>
+          </div>
+        </div>
+      </main>
+
+      <section id="features" className={styles.features}>
+        <div className={styles.featureCard}>
+          <div className={styles.featureIcon}>🛡️</div>
+          <h3 className={styles.featureTitle}>Geospatial Privacy</h3>
+          <p className={styles.featureText}>
+            Pioneers the cryptographic obfuscation of static, physical location data within decentralized finance, rather than just hiding financial transaction amounts.
+          </p>
         </div>
 
-        {status && (
-          <div className={styles.statusCard}>
-            <p>{status}</p>
-          </div>
-        )}
+        <div className={styles.featureCard}>
+          <div className={styles.featureIcon}>🧮</div>
+          <h3 className={styles.featureTitle}>Discrete Scaling</h3>
+          <p className={styles.featureText}>
+            Overcomes the inability of zero-knowledge circuits to process floating-point GPS coordinates by scaling satellite data by a factor of 10^7.
+          </p>
+        </div>
 
-        {error && (
-          <div className={styles.errorCard}>
-            <p>{error}</p>
-          </div>
-        )}
-      </main>
+        <div className={styles.featureCard}>
+          <div className={styles.featureIcon}>⚡</div>
+          <h3 className={styles.featureTitle}>Edge-Computation</h3>
+          <p className={styles.featureText}>
+            Radically reduces blockchain gas fees by shifting heavy mathematical intersection logic to the local edge device off-chain, strictly utilizing Ethereum for lightweight proof verification.
+          </p>
+        </div>
+      </section>
     </div>
   );
 }

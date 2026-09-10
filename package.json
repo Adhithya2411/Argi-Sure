@@ -23,5 +23,8 @@
     "ethers": "^6.17.0",
     "hardhat": "^2.29.1",
     "snarkjs": "^0.7.6"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^0.8.0"
   }
 }

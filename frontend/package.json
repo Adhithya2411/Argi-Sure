@@ -9,10 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "circomlibjs": "^0.1.7",
     "ethers": "^6.17.0",
+    "leaflet": "^1.9.4",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-leaflet": "^5.0.0",
     "snarkjs": "^0.7.6"
   },
   "devDependencies": {

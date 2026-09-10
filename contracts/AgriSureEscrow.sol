@@ -27,11 +27,14 @@ contract AgriSureEscrow {
 
     DisasterZone public activeDisaster;
     mapping(address => bool) public hasClaimed;
+    mapping(address => bytes32) public policyHashes;
+    mapping(address => bool) public isRegistered;
 
     event EscrowFunded(address funder, uint256 amount);
     event DisasterTriggered(uint256 minLat, uint256 maxLat, uint256 minLon, uint256 maxLon);
     event PayoutClaimed(address farmer, uint256 amount);
     event OracleUpdated(address oldOracle, address newOracle);
+    event PolicyCommitted(address indexed farmer, bytes32 locationHash);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can perform this action");
@@ -57,6 +60,13 @@ contract AgriSureEscrow {
         emit EscrowFunded(msg.sender, msg.value);
     }
 
+    function commitPolicy(bytes32 locationHash) external {
+        require(!isRegistered[msg.sender], "Farmer already registered");
+        policyHashes[msg.sender] = locationHash;
+        isRegistered[msg.sender] = true;
+        emit PolicyCommitted(msg.sender, locationHash);
+    }
+
     function triggerDisaster(
         uint256 _minLat,
         uint256 _maxLat,
@@ -79,6 +89,7 @@ contract AgriSureEscrow {
         uint[2] calldata c,
         uint[4] calldata publicInputs
     ) external {
+        require(isRegistered[msg.sender], "Farmer is not registered");
         require(activeDisaster.isActive, "No active disaster");
         require(!hasClaimed[msg.sender], "Already claimed payout");
         require(address(this).balance >= PAYOUT_AMOUNT, "Insufficient escrow liquidity");
