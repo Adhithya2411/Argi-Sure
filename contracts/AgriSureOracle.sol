@@ -10,7 +10,7 @@ interface IAgriSureEscrow {
         uint256 _maxLat,
         uint256 _minLon,
         uint256 _maxLon
-    ) external;
+    ) external returns (uint256);
 }
 
 contract AgriSureOracle is ChainlinkClient, ConfirmedOwner {
@@ -37,11 +37,13 @@ contract AgriSureOracle is ChainlinkClient, ConfirmedOwner {
 
     /**
      * @notice Initialize the link token and target oracle
-     * @dev Sepolia Testnet details used for demo purposes
+     * @param _escrowAddress the address of the Escrow contract
+     * @param _linkToken the address of the LINK token (mock or live)
+     * @param _oracleAddress the address of the Oracle contract (mock or live)
      */
-    constructor(address _escrowAddress) ConfirmedOwner(msg.sender) {
-        setChainlinkToken(0x779877A7B0D9E8603169DdbD7836e478b4624789);
-        setChainlinkOracle(0x6090149792dAAeE9D1D568c9f9a6F6B46AA29eFD);
+    constructor(address _escrowAddress, address _linkToken, address _oracleAddress) ConfirmedOwner(msg.sender) {
+        setChainlinkToken(_linkToken);
+        setChainlinkOracle(_oracleAddress);
         jobId = "ca98366cc7314957b8c012c72f05aeeb";
         fee = (1 * LINK_DIVISIBILITY) / 10; // 0.1 LINK
 
@@ -93,7 +95,8 @@ contract AgriSureOracle is ChainlinkClient, ConfirmedOwner {
         maxLon = _maxLon;
 
         // Trigger the disaster on the Escrow contract
-        escrow.triggerDisaster(_minLat, _maxLat, _minLon, _maxLon);
+        uint256 disasterId = escrow.triggerDisaster(_minLat, _maxLat, _minLon, _maxLon);
+        // Could emit an event or store disasterId if needed
     }
 
     /**

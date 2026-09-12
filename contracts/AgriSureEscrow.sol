@@ -15,7 +15,7 @@ contract AgriSureEscrow {
     address public oracle;
     IGroth16Verifier public verifier;
     
-    uint256 public constant PAYOUT_AMOUNT = 0.1 ether;
+    enum Tier { None, Basic, Premium, Enterprise }
 
     struct DisasterZone {
         uint256 minLat;
@@ -25,10 +25,14 @@ contract AgriSureEscrow {
         bool isActive;
     }
 
-    DisasterZone public activeDisaster;
-    mapping(address => bool) public hasClaimed;
+    mapping(uint256 => DisasterZone) public disasters;
+    uint256 public nextDisasterId = 1;
+    
+    // Farmer mapping to disasterId to claim status
+    mapping(address => mapping(uint256 => bool)) public hasClaimed;
     mapping(address => bytes32) public policyHashes;
     mapping(address => bool) public isRegistered;
+    mapping(address => Tier) public farmerTiers;
 
     event EscrowFunded(address funder, uint256 amount);
     event DisasterTriggered(uint256 minLat, uint256 maxLat, uint256 minLon, uint256 maxLon);
@@ -60,9 +64,18 @@ contract AgriSureEscrow {
         emit EscrowFunded(msg.sender, msg.value);
     }
 
-    function commitPolicy(bytes32 locationHash) external {
+    function getPayoutAmount(Tier tier) public pure returns (uint256) {
+        if (tier == Tier.Basic) return 0.1 ether;
+        if (tier == Tier.Premium) return 0.5 ether;
+        if (tier == Tier.Enterprise) return 1.0 ether;
+        return 0;
+    }
+
+    function commitPolicy(bytes32 locationHash, Tier tier) external {
         require(!isRegistered[msg.sender], "Farmer already registered");
+        require(tier != Tier.None, "Invalid tier");
         policyHashes[msg.sender] = locationHash;
+        farmerTiers[msg.sender] = tier;
         isRegistered[msg.sender] = true;
         emit PolicyCommitted(msg.sender, locationHash);
     }
@@ -72,8 +85,9 @@ contract AgriSureEscrow {
         uint256 _maxLat,
         uint256 _minLon,
         uint256 _maxLon
-    ) external onlyOracle {
-        activeDisaster = DisasterZone({
+    ) external onlyOracle returns (uint256) {
+        uint256 disasterId = nextDisasterId++;
+        disasters[disasterId] = DisasterZone({
             minLat: _minLat,
             maxLat: _maxLat,
             minLon: _minLon,
@@ -81,18 +95,23 @@ contract AgriSureEscrow {
             isActive: true
         });
         emit DisasterTriggered(_minLat, _maxLat, _minLon, _maxLon);
+        return disasterId;
     }
 
     function claimPayout(
+        uint256 disasterId,
         uint[2] calldata a,
         uint[2][2] calldata b,
         uint[2] calldata c,
         uint[4] calldata publicInputs
     ) external {
         require(isRegistered[msg.sender], "Farmer is not registered");
+        DisasterZone memory activeDisaster = disasters[disasterId];
         require(activeDisaster.isActive, "No active disaster");
-        require(!hasClaimed[msg.sender], "Already claimed payout");
-        require(address(this).balance >= PAYOUT_AMOUNT, "Insufficient escrow liquidity");
+        require(!hasClaimed[msg.sender][disasterId], "Already claimed payout");
+        
+        uint256 payout = getPayoutAmount(farmerTiers[msg.sender]);
+        require(address(this).balance >= payout, "Insufficient escrow liquidity");
 
         // The public inputs array should correspond exactly to the active disaster zone coordinates
         // SnarkJS typically exports public signals in the order they are defined in the circuit
@@ -107,11 +126,11 @@ contract AgriSureEscrow {
         bool isValid = verifier.verifyProof(a, b, c, publicInputs);
         require(isValid, "Invalid zero-knowledge proof");
 
-        hasClaimed[msg.sender] = true;
+        hasClaimed[msg.sender][disasterId] = true;
 
-        (bool success, ) = msg.sender.call{value: PAYOUT_AMOUNT}("");
+        (bool success, ) = msg.sender.call{value: payout}("");
         require(success, "Transfer failed");
 
-        emit PayoutClaimed(msg.sender, PAYOUT_AMOUNT);
+        emit PayoutClaimed(msg.sender, payout);
     }
 }
