@@ -6,7 +6,7 @@ pragma solidity ^0.8.24;
  * @dev A minimal Chainlink Oracle mock that can receive requests via transferAndCall
  * and allows manual fulfillment back to the client contract.
  */
-contract MockOracle {
+contract LocalOracle {
     event OracleRequest(
         bytes32 indexed specId,
         address requester,

@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [isRegistered, setIsRegistered] = useState(false);
   const [hasClaimed, setHasClaimed] = useState(false);
   const [activeDisaster, setActiveDisaster] = useState(null);
+  const [activeDisasterId, setActiveDisasterId] = useState(null); // Keep track of latest disaster ID
   
   // Replace raw string state with tuple state for the map
   const [farmPosition, setFarmPosition] = useState(null);
@@ -41,6 +42,10 @@ export default function Dashboard() {
   const [farmSize, setFarmSize] = useState('');
   const [cropType, setCropType] = useState('');
   const [selectedTier, setSelectedTier] = useState('1'); // Default to Basic (1)
+  
+  // Geocoding State
+  const [searchAddress, setSearchAddress] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   // 1. Web3 Authentication
   const connectWallet = async () => {
@@ -48,6 +53,35 @@ export default function Dashboard() {
       if (!window.ethereum) throw new Error("Please install MetaMask!");
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       setAccount(accounts[0]);
+
+      // Force MetaMask to switch to Hardhat Localhost (Chain ID: 31337)
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0x7A69' }], // 31337 in hex
+        });
+      } catch (switchError) {
+        // This error code indicates that the chain has not been added to MetaMask.
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [
+              {
+                chainId: '0x7A69',
+                chainName: 'Hardhat Localhost',
+                rpcUrls: ['http://127.0.0.1:8545/'],
+                nativeCurrency: {
+                  name: 'Ethereum',
+                  symbol: 'ETH',
+                  decimals: 18,
+                },
+              },
+            ],
+          });
+        } else {
+          throw new Error("Failed to switch to the Hardhat network in MetaMask.");
+        }
+      }
 
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
       setProvider(web3Provider);
@@ -105,24 +139,50 @@ export default function Dashboard() {
       const registered = await escrowContract.isRegistered(userAddress);
       setIsRegistered(registered);
       
-      if (registered) {
-        const claimed = await escrowContract.hasClaimed(userAddress);
-        setHasClaimed(claimed);
-        
-        // Fetch disaster zone info from contract
-        const disaster = await escrowContract.activeDisaster();
-        if (disaster.isActive) {
-          // Note: Dividing by 10^7 because contract stores scaled ints
-          setActiveDisaster({
-            minLat: Number(disaster.minLat) / 10000000,
-            maxLat: Number(disaster.maxLat) / 10000000,
-            minLon: Number(disaster.minLon) / 10000000,
-            maxLon: Number(disaster.maxLon) / 10000000,
-          });
+        const nextId = await escrowContract.nextDisasterId();
+        if (nextId > 0) {
+          const currentDisasterId = Number(nextId) - 1;
+          const claimed = await escrowContract.hasClaimed(userAddress, currentDisasterId);
+          setHasClaimed(claimed);
+          
+          // Fetch disaster zone info from contract
+          const disaster = await escrowContract.disasters(currentDisasterId);
+          if (disaster.isActive) {
+            setActiveDisasterId(currentDisasterId);
+            // Note: Dividing by 10^7 because contract stores scaled ints
+            setActiveDisaster({
+              minLat: Number(disaster.minLat) / 10000000,
+              maxLat: Number(disaster.maxLat) / 10000000,
+              minLon: Number(disaster.minLon) / 10000000,
+              maxLon: Number(disaster.maxLon) / 10000000,
+            });
+          }
         }
-      }
     } catch (err) {
       console.error("Error reading from contract", err);
+    }
+  };
+
+  // Address Geocoding using Nominatim (OpenStreetMap)
+  const handleAddressSearch = async () => {
+    if (!searchAddress) return;
+    setIsSearching(true);
+    setError('');
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddress)}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        setFarmPosition([lat, lon]);
+        toast.success("Address found! Map updated.");
+      } else {
+        setError("Address not found. Please try a different query or drop the pin manually.");
+      }
+    } catch (err) {
+      setError("Failed to geocode address.");
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -186,6 +246,7 @@ export default function Dashboard() {
       setStatus('Submitting cryptographic proof to Escrow smart contract...');
       
       const tx = await contract.claimPayout(
+        activeDisasterId,
         calldata.a, 
         calldata.b, 
         calldata.c, 
@@ -296,6 +357,26 @@ export default function Dashboard() {
                   <option value="3">Enterprise (1.0 ETH Payout)</option>
                 </select>
               </div>
+            </div>
+
+            <div className={styles.searchBarContainer}>
+              <input 
+                type="text" 
+                className={styles.input} 
+                placeholder="Search farm address (e.g. Austin, Texas)" 
+                value={searchAddress}
+                onChange={(e) => setSearchAddress(e.target.value)}
+                style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddressSearch()}
+              />
+              <button 
+                className={styles.button} 
+                style={{ width: 'auto', borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+                onClick={handleAddressSearch}
+                disabled={isSearching}
+              >
+                {isSearching ? 'Searching...' : 'Search'}
+              </button>
             </div>
 
             <MapVisualizer 

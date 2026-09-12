@@ -6,7 +6,7 @@ pragma solidity ^0.8.24;
  * @dev A minimal ERC20 token that implements transferAndCall, which is required
  * by ChainlinkClient.sol for sendChainlinkRequest to work on localhost.
  */
-contract MockLinkToken {
+contract LocalLinkToken {
     string public constant name = "Chainlink";
     string public constant symbol = "LINK";
     uint8 public constant decimals = 18;

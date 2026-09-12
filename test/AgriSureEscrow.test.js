@@ -30,12 +30,12 @@ describe("AgriSureEscrow", function () {
     await escrow.waitForDeployment();
 
     // Deploy Mocks
-    const MockLink = await ethers.getContractFactory("MockLinkToken");
-    linkToken = await MockLink.deploy();
+    const LinkToken = await ethers.getContractFactory("LocalLinkToken");
+    linkToken = await LinkToken.deploy();
     await linkToken.waitForDeployment();
 
-    const MockOracle = await ethers.getContractFactory("MockOracle");
-    mockOracle = await MockOracle.deploy();
+    const Oracle = await ethers.getContractFactory("LocalOracle");
+    mockOracle = await Oracle.deploy();
     await mockOracle.waitForDeployment();
 
     // Deploy AgriOracle
