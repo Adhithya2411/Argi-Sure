@@ -32,10 +32,14 @@ export async function hashLocation(lat, lon) {
  * Generates the Zero-Knowledge Proof completely locally in the browser
  * @param {Object} disasterZone - { minLat, maxLat, minLon, maxLon }
  * @param {Object} farmerLocation - { lat, lon }
+ * @param {Function} onLog - Callback function for real-time progress logs
  * @returns {Object} { proof, publicSignals, calldata }
  */
-export async function generateProof(disasterZone, farmerLocation) {
+export async function generateProof(disasterZone, farmerLocation, onLog = () => {}) {
     
+    onLog("[INFO] Initializing Edge-Computation Protocol...");
+    onLog("[DEBUG] Scaling GPS Float Telemetry by 10^7 factor...");
+
     // Structure inputs exactly as required by the Circom circuit
     const input = {
         min_lat: disasterZone.minLat.toString(),
@@ -46,14 +50,26 @@ export async function generateProof(disasterZone, farmerLocation) {
         farmer_lon: scaleCoordinate(farmerLocation.lon)
     };
 
-    console.log("Generating Zero-Knowledge Proof with scaled inputs:", input);
+    onLog("[DEBUG] Compiling discrete inputs to Rank-1 Constraint System (R1CS)...");
+    
+    // Pass a logger to SnarkJS to capture deeper execution logs
+    const logger = {
+        info: (msg) => onLog(`[INFO] ${msg}`),
+        debug: (msg) => onLog(`[DEBUG] ${msg}`)
+    };
 
+    onLog("[INFO] Loading LocationVerifier.wasm and zkey proving key...");
+    
     // WASM and ZKEY files must be placed in the /public directory of the Next.js app
     const { proof, publicSignals } = await snarkjs.groth16.fullProve(
         input,
         "/LocationVerifier.wasm",
-        "/circuit_final.zkey"
+        "/circuit_final.zkey",
+        logger
     );
+
+    onLog("[SUCCESS] Zero-Knowledge Proof generated mathematically.");
+    onLog("[INFO] Exporting Solidity calldata for Escrow settlement...");
 
     // Export calldata for the smart contract
     const calldataStr = await snarkjs.groth16.exportSolidityCallData(proof, publicSignals);

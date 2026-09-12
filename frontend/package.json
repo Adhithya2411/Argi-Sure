@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "node copy_zk.js"
   },
   "dependencies": {
     "circomlibjs": "^0.1.7",

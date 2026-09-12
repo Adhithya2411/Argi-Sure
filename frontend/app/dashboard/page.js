@@ -32,6 +32,7 @@ export default function Dashboard() {
   
   const [isProcessingZk, setIsProcessingZk] = useState(false);
   const [zkComplete, setZkComplete] = useState(false);
+  const [zkLogs, setZkLogs] = useState([]);
   const [networkEvents, setNetworkEvents] = useState([]);
 
   // 1. Web3 Authentication
@@ -48,11 +49,41 @@ export default function Dashboard() {
       const escrowContract = new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
       setContract(escrowContract);
       
+      // Setup event listeners
+      escrowContract.on("PolicyCommitted", (farmer, locationHash, event) => {
+        setNetworkEvents(prev => [{
+          type: 'PolicyCommitted',
+          hash: locationHash,
+          farmer: farmer,
+          timestamp: new Date().toLocaleTimeString()
+        }, ...prev]);
+      });
+
+      escrowContract.on("PayoutClaimed", (farmer, amount, event) => {
+        setNetworkEvents(prev => [{
+          type: 'PayoutClaimed (ZK-Verified)',
+          hash: event.log.transactionHash,
+          farmer: farmer,
+          amount: ethers.formatEther(amount),
+          timestamp: new Date().toLocaleTimeString()
+        }, ...prev]);
+      });
+
       checkRegistrationStatus(escrowContract, accounts[0]);
     } catch (err) {
       setError(err.message);
     }
   };
+
+  // Cleanup listeners on unmount
+  useEffect(() => {
+    return () => {
+      if (contract) {
+        contract.removeAllListeners("PolicyCommitted");
+        contract.removeAllListeners("PayoutClaimed");
+      }
+    };
+  }, [contract]);
 
   const checkRegistrationStatus = async (escrowContract, userAddress) => {
     try {
@@ -94,19 +125,12 @@ export default function Dashboard() {
       
       setStatus(`Hash generated: ${locationHash.substring(0, 15)}... Awaiting wallet signature.`);
       
-      const tx = await contract.commitPolicy(`0x${locationHash}`);
+      const tx = await contract.commitPolicy(`0x${locationHash}`, { gasLimit: 300000 });
       setStatus('Transaction submitted. Waiting for confirmation...');
       
       await tx.wait();
       setStatus('Policy Committed successfully!');
       
-      setNetworkEvents(prev => [{
-        type: 'PolicyCommitted',
-        hash: tx.hash,
-        farmer: account,
-        timestamp: new Date().toLocaleTimeString()
-      }, ...prev]);
-
       setIsRegistered(true);
     } catch (err) {
       console.error(err);
@@ -120,14 +144,11 @@ export default function Dashboard() {
     if (!farmPosition) return setError("Please drop a pin on your farm location.");
     setIsProcessingZk(true);
     setZkComplete(false);
+    setZkLogs([]);
     setStatus('Starting Zero-Knowledge Edge-Computation Protocol...');
     setError('');
-  };
 
-  // Triggered when ZK Terminal finishes rendering its logs
-  const onZkTerminalComplete = async () => {
     try {
-      setZkComplete(true);
       const lat = farmPosition[0];
       const lon = farmPosition[1];
 
@@ -141,7 +162,8 @@ export default function Dashboard() {
 
       const { proof, publicSignals, calldata } = await generateProof(
         dZone,
-        { lat, lon }
+        { lat, lon },
+        (msg) => setZkLogs(prev => [...prev, msg])
       );
 
       setStatus('Submitting cryptographic proof to Escrow smart contract...');
@@ -150,20 +172,14 @@ export default function Dashboard() {
         calldata.a, 
         calldata.b, 
         calldata.c, 
-        calldata.Input
+        calldata.Input,
+        { gasLimit: 500000 }
       );
       
       await tx.wait();
 
       setStatus('🎉 Payout Successfully Claimed! Smart Contract verified location without exposing GPS.');
-      setNetworkEvents(prev => [{
-        type: 'PayoutClaimed (ZK-Verified)',
-        hash: tx.hash,
-        farmer: account,
-        amount: '10.0', // Simulated payout amount
-        timestamp: new Date().toLocaleTimeString()
-      }, ...prev]);
-
+      setZkComplete(true);
       setHasClaimed(true);
       setIsProcessingZk(false);
 
@@ -287,7 +303,7 @@ export default function Dashboard() {
                   
                   <ZkTerminal 
                     isProcessing={isProcessingZk} 
-                    onComplete={onZkTerminalComplete} 
+                    logs={zkLogs} 
                   />
                 </>
               )}

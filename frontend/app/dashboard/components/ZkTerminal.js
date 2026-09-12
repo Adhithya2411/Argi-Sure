@@ -1,46 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 
-export default function ZkTerminal({ isProcessing, onComplete }) {
-  const [logs, setLogs] = useState([]);
-  
-  const mockLogs = [
-    "[INFO] Initializing WebAssembly Circom Engine...",
-    "[INFO] Loading LocationVerifier.wasm...",
-    "[INFO] Loading zkey proving key (2.4MB)...",
-    "[DEBUG] Scaling GPS Float Telemetry by 10^7 factor...",
-    "[DEBUG] Compiling discrete inputs to Rank-1 Constraint System (R1CS)...",
-    "[INFO] Constraint solving: LessEqThan[0] -> Valid",
-    "[INFO] Constraint solving: LessEqThan[1] -> Valid",
-    "[INFO] Constraint solving: LessEqThan[2] -> Valid",
-    "[INFO] Constraint solving: LessEqThan[3] -> Valid",
-    "[DEBUG] Generating cryptographic polynomial witness...",
-    "[INFO] Witness generation complete (260 non-linear constraints).",
-    "[INFO] Executing Groth16 Proving protocol...",
-    "[SUCCESS] Zero-Knowledge Proof generated: 300 bytes.",
-    "[INFO] Exporting Solidity calldata for Escrow settlement..."
-  ];
-
-  useEffect(() => {
-    if (!isProcessing) {
-      setLogs([]);
-      return;
-    }
-
-    let currentIndex = 0;
-    const interval = setInterval(() => {
-      if (currentIndex < mockLogs.length) {
-        setLogs(prev => [...prev, mockLogs[currentIndex]]);
-        currentIndex++;
-      } else {
-        clearInterval(interval);
-        if (onComplete) onComplete();
-      }
-    }, 400); // add a new log every 400ms
-
-    return () => clearInterval(interval);
-  }, [isProcessing]);
-
+export default function ZkTerminal({ isProcessing, logs = [] }) {
   if (!isProcessing && logs.length === 0) return null;
 
   return (
@@ -74,7 +35,7 @@ export default function ZkTerminal({ isProcessing, onComplete }) {
           {log}
         </div>
       ))}
-      {isProcessing && logs.length < mockLogs.length && (
+      {isProcessing && (
         <div style={{ display: 'inline-block', width: '8px', height: '15px', background: '#4ade80', animation: 'blink 1s step-end infinite', verticalAlign: 'middle', marginLeft: '4px' }}></div>
       )}
       <style>{`
