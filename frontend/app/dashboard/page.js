@@ -103,7 +103,8 @@ export default function Dashboard() {
       setNetworkEvents(prev => [{
         type: 'PolicyCommitted',
         hash: tx.hash,
-        time: new Date().toLocaleTimeString()
+        farmer: account,
+        timestamp: new Date().toLocaleTimeString()
       }, ...prev]);
 
       setIsRegistered(true);
@@ -158,7 +159,9 @@ export default function Dashboard() {
       setNetworkEvents(prev => [{
         type: 'PayoutClaimed (ZK-Verified)',
         hash: tx.hash,
-        time: new Date().toLocaleTimeString()
+        farmer: account,
+        amount: '10.0', // Simulated payout amount
+        timestamp: new Date().toLocaleTimeString()
       }, ...prev]);
 
       setHasClaimed(true);

@@ -4,43 +4,40 @@ import styles from '../dashboard.module.css';
 export default function BlockchainExplorer({ events = [] }) {
   // If no real events, show a placeholder
   const displayEvents = events.length > 0 ? events : [
-    { type: "Contract Deployed", hash: "0x5FbDB2315678afecb367f032d93F642f64180aa3", time: "System Init" },
-    { type: "Oracle Trigger", hash: "0xchainlink_event_b8f4...", time: "Live" }
+    { type: "Contract Deployed", hash: "0x5FbDB2315678afecb367f032d93F642f64180aa3", timestamp: "System Init", farmer: "0x0000000000000000000000000000000000000000" },
+    { type: "Oracle Trigger", hash: "0xchainlink_event_b8f4...", timestamp: "Live", farmer: "0xChainlinkOracle0000000000000000000000000" }
   ];
 
   return (
-    <div className={styles.glassCard} style={{ marginTop: '2rem' }}>
-      <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', color: '#818cf8' }}>
-        Network Explorer (On-Chain Truth)
+    <div style={{ marginTop: '2rem' }}>
+      <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', marginBottom: '1rem', color: '#f8fafc' }}>
+        Live Network Feed
       </h3>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem', fontSize: '0.85rem' }}>
-        <thead>
-          <tr style={{ color: '#94a3b8', textAlign: 'left' }}>
-            <th style={{ padding: '0.5rem' }}>Event Type</th>
-            <th style={{ padding: '0.5rem' }}>Cryptographic Target / Tx Hash</th>
-            <th style={{ padding: '0.5rem' }}>Timestamp</th>
-          </tr>
-        </thead>
-        <tbody>
-          {displayEvents.map((evt, i) => (
-            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <td style={{ padding: '0.75rem', color: '#f8fafc' }}>
-                <span style={{ 
-                  background: evt.type.includes('Payout') ? 'rgba(52,211,153,0.2)' : 'rgba(56,189,248,0.2)',
-                  color: evt.type.includes('Payout') ? '#34d399' : '#38bdf8',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '4px',
-                  fontWeight: 'bold'
-                }}>
-                  {evt.type}
-                </span>
-              </td>
-              <td style={{ padding: '0.75rem', fontFamily: 'monospace', color: '#cbd5e1' }}>{evt.hash}</td>
-              <td style={{ padding: '0.75rem', color: '#94a3b8' }}>{evt.time}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className={styles.explorerContainer}>
+        {displayEvents.map((evt, idx) => (
+          <div key={idx} className={styles.explorerCard}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <span className={`${styles.explorerBadge} ${evt.type === 'PolicyCommitted' ? styles.badgeInfo : styles.badgeSuccess}`}>
+                {evt.type}
+              </span>
+              <span className={styles.explorerTime}>{evt.timestamp}</span>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ color: '#e2e8f0', fontSize: '0.9rem', marginBottom: '0.2rem' }}>
+                Actor: <span style={{ fontFamily: 'monospace', color: '#94a3b8' }}>{evt.farmer ? `${evt.farmer.substring(0,6)}...${evt.farmer.substring(evt.farmer.length - 4)}` : 'System'}</span>
+              </div>
+              <div style={{ color: '#e2e8f0', fontSize: '0.9rem' }}>
+                {evt.type.includes('Payout') ? 'Payout: ' : 'Hash: '}
+                {evt.type.includes('Payout') ? (
+                  <strong style={{ color: '#10b981' }}>{evt.amount} ETH</strong>
+                ) : (
+                  <span className={styles.explorerHash}>{evt.hash.substring(0,14)}...</span>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

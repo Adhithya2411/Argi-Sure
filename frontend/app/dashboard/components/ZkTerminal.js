@@ -45,34 +45,40 @@ export default function ZkTerminal({ isProcessing, onComplete }) {
 
   return (
     <div style={{
-      background: '#020617',
-      color: '#38bdf8',
-      fontFamily: 'monospace',
+      background: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      color: '#4ade80',
+      fontFamily: '"Fira Code", monospace',
       padding: '1.5rem',
-      borderRadius: '12px',
-      border: '1px solid #1e293b',
+      borderRadius: '16px',
+      border: '1px solid rgba(74, 222, 128, 0.2)',
       height: '300px',
       overflowY: 'auto',
-      fontSize: '0.85rem',
+      fontSize: '0.9rem',
       lineHeight: '1.6',
       marginTop: '1.5rem',
-      boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)'
+      boxShadow: '0 10px 30px -10px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5)'
     }}>
-      <div style={{ marginBottom: '1rem', color: '#94a3b8', borderBottom: '1px dashed #334155', paddingBottom: '0.5rem' }}>
-        &gt;_ ZK-SNARK Edge-Computation Terminal
+      <div style={{ marginBottom: '1rem', color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{width: 10, height: 10, borderRadius: '50%', background: '#ef4444'}}></div>
+        <div style={{width: 10, height: 10, borderRadius: '50%', background: '#eab308'}}></div>
+        <div style={{width: 10, height: 10, borderRadius: '50%', background: '#22c55e'}}></div>
+        <span style={{marginLeft: '0.5rem'}}>&gt;_ ZK-SNARK Edge-Computation Protocol</span>
       </div>
       {logs.map((log, i) => (
         <div key={i} style={{ 
-          color: log.includes('[SUCCESS]') ? '#34d399' : log.includes('[DEBUG]') ? '#94a3b8' : '#38bdf8' 
+          color: log.includes('[SUCCESS]') ? '#10b981' : log.includes('[DEBUG]') ? '#64748b' : '#4ade80',
+          fontWeight: log.includes('[SUCCESS]') ? 'bold' : 'normal'
         }}>
           {log}
         </div>
       ))}
       {isProcessing && logs.length < mockLogs.length && (
-        <div style={{ animation: 'blink 1s infinite' }}>_</div>
+        <div style={{ display: 'inline-block', width: '8px', height: '15px', background: '#4ade80', animation: 'blink 1s step-end infinite', verticalAlign: 'middle', marginLeft: '4px' }}></div>
       )}
       <style>{`
-        @keyframes blink { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
       `}</style>
     </div>
   );

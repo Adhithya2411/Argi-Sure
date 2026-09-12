@@ -1,0 +1,626 @@
+[
+    {
+        "event_id": "us7000teu1",
+        "type": "Severe Earthquake",
+        "location": "southeast of the Loyalty Islands",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -239192000,
+            "maxLat": -229192000,
+            "minLon": 1711769000,
+            "maxLon": 1721769000
+        }
+    },
+    {
+        "event_id": "us7000temi",
+        "type": "Severe Earthquake",
+        "location": "93 km SE of Kirakira, Solomon Islands",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": -115595000,
+            "maxLat": -105595000,
+            "minLon": 1620190000,
+            "maxLon": 1630190000
+        }
+    },
+    {
+        "event_id": "us7000tek0",
+        "type": "Severe Earthquake",
+        "location": "96 km ESE of Isangel, Vanuatu",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": -203070000,
+            "maxLat": -193070000,
+            "minLon": 1696576000,
+            "maxLon": 1706576000
+        }
+    },
+    {
+        "event_id": "us7000teji",
+        "type": "Severe Earthquake",
+        "location": "162 km E of Kokopo, Papua New Guinea",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -50717000,
+            "maxLat": -40717000,
+            "minLon": 1532143000,
+            "maxLon": 1542143000
+        }
+    },
+    {
+        "event_id": "us7000tefx",
+        "type": "Severe Earthquake",
+        "location": "168 km ESE of Kuril\u2019sk, Russia",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": 444418000,
+            "maxLat": 454418000,
+            "minLon": 1494838000,
+            "maxLon": 1504838000
+        }
+    },
+    {
+        "event_id": "us7000te4b",
+        "type": "Severe Earthquake",
+        "location": "100 km S of Nikolski, Alaska",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": 515506000,
+            "maxLat": 525506000,
+            "minLon": -1696387000,
+            "maxLon": -1686387000
+        }
+    },
+    {
+        "event_id": "us7000tdvt",
+        "type": "Severe Earthquake",
+        "location": "84 km SSW of Nikolski, Alaska",
+        "severity_magnitude": 6.3,
+        "oracle_payload": {
+            "minLat": 517579000,
+            "maxLat": 527579000,
+            "minLon": -1699088000,
+            "maxLon": -1689088000
+        }
+    },
+    {
+        "event_id": "us7000tdrv",
+        "type": "Severe Earthquake",
+        "location": "South Sandwich Islands region",
+        "severity_magnitude": 6.2,
+        "oracle_payload": {
+            "minLat": -567062000,
+            "maxLat": -557062000,
+            "minLon": -284085000,
+            "maxLon": -274085000
+        }
+    },
+    {
+        "event_id": "us7000tdms",
+        "type": "Severe Earthquake",
+        "location": "southern East Pacific Rise",
+        "severity_magnitude": 5.9,
+        "oracle_payload": {
+            "minLat": -354814999,
+            "maxLat": -344814999,
+            "minLon": -1095259000,
+            "maxLon": -1085259000
+        }
+    },
+    {
+        "event_id": "us7000tdmp",
+        "type": "Severe Earthquake",
+        "location": "71 km WSW of Puerto Madero, Mexico",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": 138909000,
+            "maxLat": 148909000,
+            "minLon": -934873000,
+            "maxLon": -924873000
+        }
+    },
+    {
+        "event_id": "us7000tdhl",
+        "type": "Severe Earthquake",
+        "location": "159 km WSW of Abepura, Indonesia",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": -37239000,
+            "maxLat": -27239000,
+            "minLon": 1388456000,
+            "maxLon": 1398456000
+        }
+    },
+    {
+        "event_id": "us7000tdav",
+        "type": "Severe Earthquake",
+        "location": "82 km SE of Maba, Indonesia",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": -3315000,
+            "maxLat": 6685000,
+            "minLon": 1283054000,
+            "maxLon": 1293054000
+        }
+    },
+    {
+        "event_id": "us7000td2z",
+        "type": "Severe Earthquake",
+        "location": "44 km NNE of Ruteng, Indonesia",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -87410000,
+            "maxLat": -77410000,
+            "minLon": 1201119000,
+            "maxLon": 1211119000
+        }
+    },
+    {
+        "event_id": "us7000tcxn",
+        "type": "Severe Earthquake",
+        "location": "Kermadec Islands, New Zealand",
+        "severity_magnitude": 5.8,
+        "oracle_payload": {
+            "minLat": -306462000,
+            "maxLat": -296462000,
+            "minLon": -1783882000,
+            "maxLon": -1773882000
+        }
+    },
+    {
+        "event_id": "us7000tcf3",
+        "type": "Severe Earthquake",
+        "location": "145 km N of Caluula, Somalia",
+        "severity_magnitude": 6,
+        "oracle_payload": {
+            "minLat": 127654000,
+            "maxLat": 137654000,
+            "minLon": 500424999,
+            "maxLon": 510424999
+        }
+    },
+    {
+        "event_id": "us7000tc18",
+        "type": "Severe Earthquake",
+        "location": "209 km ESE of \u014cfunato, Japan",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": 376821000,
+            "maxLat": 386821000,
+            "minLon": 1433447000,
+            "maxLon": 1443447000
+        }
+    },
+    {
+        "event_id": "us6000tnci",
+        "type": "Severe Earthquake",
+        "location": "south of the Fiji Islands",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -238497000,
+            "maxLat": -228497000,
+            "minLon": 1793206999,
+            "maxLon": 1803206999
+        }
+    },
+    {
+        "event_id": "us6000tnbm",
+        "type": "Severe Earthquake",
+        "location": "108 km NE of Hengchun, Taiwan",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": 221053000,
+            "maxLat": 231053000,
+            "minLon": 1210709000,
+            "maxLon": 1220709000
+        }
+    },
+    {
+        "event_id": "us6000tn41",
+        "type": "Severe Earthquake",
+        "location": "211 km NNE of Lospalos, Timor Leste",
+        "severity_magnitude": 6,
+        "oracle_payload": {
+            "minLat": -71551000,
+            "maxLat": -61551000,
+            "minLon": 1269245000,
+            "maxLon": 1279245000
+        }
+    },
+    {
+        "event_id": "us6000tn33",
+        "type": "Severe Earthquake",
+        "location": "207 km SSE of Amahai, Indonesia",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -55525000,
+            "maxLat": -45525000,
+            "minLon": 1291870999,
+            "maxLon": 1301870999
+        }
+    },
+    {
+        "event_id": "us6000tmz6",
+        "type": "Severe Earthquake",
+        "location": "32 km SSW of Honch\u014d, Japan",
+        "severity_magnitude": 6,
+        "oracle_payload": {
+            "minLat": 413495000,
+            "maxLat": 423495000,
+            "minLon": 1423020000,
+            "maxLon": 1433020000
+        }
+    },
+    {
+        "event_id": "us6000tmta",
+        "type": "Severe Earthquake",
+        "location": "2 km NNW of Toride, Japan",
+        "severity_magnitude": 5.8,
+        "oracle_payload": {
+            "minLat": 354182000,
+            "maxLat": 364182000,
+            "minLon": 1395771000,
+            "maxLon": 1405771000
+        }
+    },
+    {
+        "event_id": "us6000tmrw",
+        "type": "Severe Earthquake",
+        "location": "Scotia Sea",
+        "severity_magnitude": 6.2,
+        "oracle_payload": {
+            "minLat": -608789000,
+            "maxLat": -598789000,
+            "minLon": -481047000,
+            "maxLon": -471047000
+        }
+    },
+    {
+        "event_id": "us6000tmrn",
+        "type": "Severe Earthquake",
+        "location": "Scotia Sea",
+        "severity_magnitude": 5.7,
+        "oracle_payload": {
+            "minLat": -607649000,
+            "maxLat": -597649000,
+            "minLon": -477590999,
+            "maxLon": -467590999
+        }
+    },
+    {
+        "event_id": "us6000tmlu",
+        "type": "Severe Earthquake",
+        "location": "187 km SW of Labuan, Indonesia",
+        "severity_magnitude": 5.8,
+        "oracle_payload": {
+            "minLat": -80318000,
+            "maxLat": -70318000,
+            "minLon": 1040854000,
+            "maxLon": 1050854000
+        }
+    },
+    {
+        "event_id": "us6000tm8h",
+        "type": "Severe Earthquake",
+        "location": "68 km NNW of Ende, Indonesia",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": -87970000,
+            "maxLat": -77970000,
+            "minLon": 1208718000,
+            "maxLon": 1218718000
+        }
+    },
+    {
+        "event_id": "us6000tm81",
+        "type": "Severe Earthquake",
+        "location": "37 km NE of Tambo, Peru",
+        "severity_magnitude": 6.7,
+        "oracle_payload": {
+            "minLat": -151020000,
+            "maxLat": -141020000,
+            "minLon": -741401000,
+            "maxLon": -731401000
+        }
+    },
+    {
+        "event_id": "us6000tm1j",
+        "type": "Severe Earthquake",
+        "location": "42 km N of Ruteng, Indonesia",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": -87327999,
+            "maxLat": -77327999,
+            "minLon": 1200308000,
+            "maxLon": 1210308000
+        }
+    },
+    {
+        "event_id": "us6000tm0u",
+        "type": "Severe Earthquake",
+        "location": "31 km NNE of Ruteng, Indonesia",
+        "severity_magnitude": 5.8,
+        "oracle_payload": {
+            "minLat": -88417999,
+            "maxLat": -78417999,
+            "minLon": 1200442000,
+            "maxLon": 1210442000
+        }
+    },
+    {
+        "event_id": "us6000tlxq",
+        "type": "Severe Earthquake",
+        "location": "45 km NNE of Ruteng, Indonesia",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -87075000,
+            "maxLat": -77075000,
+            "minLon": 1200580000,
+            "maxLon": 1210580000
+        }
+    },
+    {
+        "event_id": "us6000tlrj",
+        "type": "Severe Earthquake",
+        "location": "269 km SSE of Dunhuang, China",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": 373425000,
+            "maxLat": 383425000,
+            "minLon": 950712999,
+            "maxLon": 960712999
+        }
+    },
+    {
+        "event_id": "us6000tlkt",
+        "type": "Severe Earthquake",
+        "location": "145 km SSE of Teluk Dalam, Indonesia",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": -10829000,
+            "maxLat": -828999,
+            "minLon": 979357000,
+            "maxLon": 989357000
+        }
+    },
+    {
+        "event_id": "us6000tlkl",
+        "type": "Severe Earthquake",
+        "location": "98 km SW of Puerto Madero, Mexico",
+        "severity_magnitude": 5.8,
+        "oracle_payload": {
+            "minLat": 136863000,
+            "maxLat": 146863000,
+            "minLon": -936503000,
+            "maxLon": -926503000
+        }
+    },
+    {
+        "event_id": "usd0015edq",
+        "type": "Severe Earthquake",
+        "location": "72 km E of Petropavlovsk-Kamchatsky, Russia",
+        "severity_magnitude": 5.8,
+        "oracle_payload": {
+            "minLat": 524895000,
+            "maxLat": 534895000,
+            "minLon": 1591941000,
+            "maxLon": 1601941000
+        }
+    },
+    {
+        "event_id": "usd0015eay",
+        "type": "Severe Earthquake",
+        "location": "64 km NNW of Ende, Indonesia",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -87878000,
+            "maxLat": -77878000,
+            "minLon": 1209763000,
+            "maxLon": 1219763000
+        }
+    },
+    {
+        "event_id": "usd0015e7p",
+        "type": "Severe Earthquake",
+        "location": "118 km ESE of Madang, Papua New Guinea",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -61736000,
+            "maxLat": -51736000,
+            "minLon": 1462605000,
+            "maxLon": 1472605000
+        }
+    },
+    {
+        "event_id": "us6000tl6a",
+        "type": "Severe Earthquake",
+        "location": "79 km N of Ruteng, Indonesia",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -83981999,
+            "maxLat": -73982000,
+            "minLon": 1200537000,
+            "maxLon": 1210537000
+        }
+    },
+    {
+        "event_id": "us6000tl4w",
+        "type": "Severe Earthquake",
+        "location": "55 km NNE of Port-Olry, Vanuatu",
+        "severity_magnitude": 6.1,
+        "oracle_payload": {
+            "minLat": -150653000,
+            "maxLat": -140653000,
+            "minLon": 1667418000,
+            "maxLon": 1677418000
+        }
+    },
+    {
+        "event_id": "us6000tl36",
+        "type": "Severe Earthquake",
+        "location": "Volcano Islands, Japan region",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": 229610999,
+            "maxLat": 239610999,
+            "minLon": 1423351000,
+            "maxLon": 1433351000
+        }
+    },
+    {
+        "event_id": "us6000tl1s",
+        "type": "Severe Earthquake",
+        "location": "128 km NNE of Palu, Indonesia",
+        "severity_magnitude": 5.7,
+        "oracle_payload": {
+            "minLat": -3205000,
+            "maxLat": 6795000,
+            "minLon": 1197829000,
+            "maxLon": 1207829000
+        }
+    },
+    {
+        "event_id": "us6000tkyk",
+        "type": "Severe Earthquake",
+        "location": "9 km WNW of Pematangsiantar, Indonesia",
+        "severity_magnitude": 6.9,
+        "oracle_payload": {
+            "minLat": 24863000,
+            "maxLat": 34863000,
+            "minLon": 984853000,
+            "maxLon": 994853000
+        }
+    },
+    {
+        "event_id": "us6000tkvj",
+        "type": "Severe Earthquake",
+        "location": "43 km SE of Severo-Kuril\u2019sk, Russia",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": 498726000,
+            "maxLat": 508726000,
+            "minLon": 1560089000,
+            "maxLon": 1570089000
+        }
+    },
+    {
+        "event_id": "us6000tkuf",
+        "type": "Severe Earthquake",
+        "location": "28 km NE of Labuan Bajo, Indonesia",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -87815999,
+            "maxLat": -77815999,
+            "minLon": 1195343000,
+            "maxLon": 1205343000
+        }
+    },
+    {
+        "event_id": "us6000tkuc",
+        "type": "Severe Earthquake",
+        "location": "62 km N of Ende, Indonesia",
+        "severity_magnitude": 6.1,
+        "oracle_payload": {
+            "minLat": -87904000,
+            "maxLat": -77904000,
+            "minLon": 1210625000,
+            "maxLon": 1220625000
+        }
+    },
+    {
+        "event_id": "us6000tku7",
+        "type": "Severe Earthquake",
+        "location": "49 km NNW of Ende, Indonesia",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": -89444000,
+            "maxLat": -79444000,
+            "minLon": 1209566000,
+            "maxLon": 1219566000
+        }
+    },
+    {
+        "event_id": "us6000tkub",
+        "type": "Severe Earthquake",
+        "location": "62 km ENE of Ruteng, Indonesia",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": -89867000,
+            "maxLat": -79867000,
+            "minLon": 1205158000,
+            "maxLon": 1215158000
+        }
+    },
+    {
+        "event_id": "us6000tkta",
+        "type": "Severe Earthquake",
+        "location": "40 km NE of Labuan Bajo, Indonesia",
+        "severity_magnitude": 5.9,
+        "oracle_payload": {
+            "minLat": -87393000,
+            "maxLat": -77393000,
+            "minLon": 1196488000,
+            "maxLon": 1206488000
+        }
+    },
+    {
+        "event_id": "us6000tlwi",
+        "type": "Severe Earthquake",
+        "location": "78 km NNW of Ende, Indonesia",
+        "severity_magnitude": 5.8,
+        "oracle_payload": {
+            "minLat": -87289999,
+            "maxLat": -77289999,
+            "minLon": 1208080000,
+            "maxLon": 1218080000
+        }
+    },
+    {
+        "event_id": "us6000tkt2",
+        "type": "Severe Earthquake",
+        "location": "64 km NNW of Ende, Indonesia",
+        "severity_magnitude": 7.8,
+        "oracle_payload": {
+            "minLat": -88514000,
+            "maxLat": -78514000,
+            "minLon": 1208478000,
+            "maxLon": 1218478000
+        }
+    },
+    {
+        "event_id": "us6000tkhm",
+        "type": "Severe Earthquake",
+        "location": "Kermadec Islands region",
+        "severity_magnitude": 5.6,
+        "oracle_payload": {
+            "minLat": -292929000,
+            "maxLat": -282929000,
+            "minLon": -1768328000,
+            "maxLon": -1758328000
+        }
+    },
+    {
+        "event_id": "us6000tkcb",
+        "type": "Severe Earthquake",
+        "location": "48 km SSW of Intipuc\u00e1, El Salvador",
+        "severity_magnitude": 5.5,
+        "oracle_payload": {
+            "minLat": 122675000,
+            "maxLat": 132675000,
+            "minLon": -886560000,
+            "maxLon": -876560000
+        }
+    },
+    {
+        "event_id": "us6000tk74",
+        "type": "Severe Earthquake",
+        "location": "South Sandwich Islands region",
+        "severity_magnitude": 6,
+        "oracle_payload": {
+            "minLat": -607463000,
+            "maxLat": -597463000,
+            "minLon": -295300000,
+            "maxLon": -285300000
+        }
+    }
+]

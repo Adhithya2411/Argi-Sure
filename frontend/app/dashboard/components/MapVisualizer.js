@@ -41,7 +41,14 @@ export default function MapVisualizer({
   ] : null;
 
   return (
-    <div style={{ height: '400px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+    <div style={{ 
+      height: '400px', 
+      width: '100%', 
+      borderRadius: '16px', 
+      overflow: 'hidden', 
+      border: '1px solid rgba(255,255,255,0.05)',
+      boxShadow: '0 10px 30px -10px rgba(0,0,0,0.8)'
+    }}>
       <MapContainer 
         center={currentCenter} 
         zoom={6} 
@@ -50,7 +57,7 @@ export default function MapVisualizer({
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
         {interactive && setPosition && (
@@ -64,10 +71,26 @@ export default function MapVisualizer({
         {bounds && (
           <Rectangle 
             bounds={bounds} 
-            pathOptions={{ color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.2 }} 
+            pathOptions={{ 
+              color: '#ef4444', 
+              weight: 3, 
+              fillColor: '#ef4444', 
+              fillOpacity: 0.3,
+              className: 'radar-polygon' 
+            }} 
           />
         )}
       </MapContainer>
+      <style jsx global>{`
+        .radar-polygon {
+          animation: pulseGlow 2s infinite;
+        }
+        @keyframes pulseGlow {
+          0% { filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.8)); }
+          50% { filter: drop-shadow(0 0 15px rgba(239, 68, 68, 1)); }
+          100% { filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.8)); }
+        }
+      `}</style>
     </div>
   );
 }
