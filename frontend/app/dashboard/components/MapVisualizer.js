@@ -42,7 +42,9 @@ export default function MapVisualizer({
 
   return (
     <div style={{ 
-      height: '400px', 
+      height: '400px',
+      maxHeight: '40vh',
+      minHeight: '300px',
       width: '100%', 
       borderRadius: '16px', 
       overflow: 'hidden', 

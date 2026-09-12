@@ -6,6 +6,7 @@ import { generateProof, hashLocation } from '../../utils/zkp';
 import { ESCROW_ABI, ESCROW_ADDRESS } from '../../utils/contract';
 import styles from './dashboard.module.css';
 import Link from 'next/link';
+import { Toaster, toast } from 'react-hot-toast';
 
 import ZkTerminal from './components/ZkTerminal';
 import BlockchainExplorer from './components/BlockchainExplorer';
@@ -35,6 +36,12 @@ export default function Dashboard() {
   const [zkLogs, setZkLogs] = useState([]);
   const [networkEvents, setNetworkEvents] = useState([]);
 
+  // Form State
+  const [farmerName, setFarmerName] = useState('');
+  const [farmSize, setFarmSize] = useState('');
+  const [cropType, setCropType] = useState('');
+  const [selectedTier, setSelectedTier] = useState('1'); // Default to Basic (1)
+
   // 1. Web3 Authentication
   const connectWallet = async () => {
     try {
@@ -51,6 +58,7 @@ export default function Dashboard() {
       
       // Setup event listeners
       escrowContract.on("PolicyCommitted", (farmer, locationHash, event) => {
+        toast.success(`Policy Committed for ${farmer.substring(0,6)}...`);
         setNetworkEvents(prev => [{
           type: 'PolicyCommitted',
           hash: locationHash,
@@ -60,6 +68,7 @@ export default function Dashboard() {
       });
 
       escrowContract.on("PayoutClaimed", (farmer, amount, event) => {
+        toast.success(`Payout Claimed! ${ethers.formatEther(amount)} ETH`);
         setNetworkEvents(prev => [{
           type: 'PayoutClaimed (ZK-Verified)',
           hash: event.log.transactionHash,
@@ -67,6 +76,11 @@ export default function Dashboard() {
           amount: ethers.formatEther(amount),
           timestamp: new Date().toLocaleTimeString()
         }, ...prev]);
+      });
+
+      escrowContract.on("DisasterTriggered", (minLat, maxLat, minLon, maxLon, event) => {
+        toast.error('NOAA Disaster Triggered On-Chain!', { duration: 5000 });
+        checkRegistrationStatus(escrowContract, accounts[0]);
       });
 
       checkRegistrationStatus(escrowContract, accounts[0]);
@@ -81,6 +95,7 @@ export default function Dashboard() {
       if (contract) {
         contract.removeAllListeners("PolicyCommitted");
         contract.removeAllListeners("PayoutClaimed");
+        contract.removeAllListeners("DisasterTriggered");
       }
     };
   }, [contract]);
@@ -114,6 +129,7 @@ export default function Dashboard() {
   // Step 1: Policy Commitment
   const handleCommitPolicy = async () => {
     if (!farmPosition) return setError("Please drop a pin on the map first.");
+    if (!farmerName || !farmSize || !cropType) return setError("Please fill out all farm details.");
     
     setStatus('Generating Poseidon Hash locally...');
     setError('');
@@ -125,7 +141,8 @@ export default function Dashboard() {
       
       setStatus(`Hash generated: ${locationHash.substring(0, 15)}... Awaiting wallet signature.`);
       
-      const tx = await contract.commitPolicy(`0x${locationHash}`, { gasLimit: 300000 });
+      const tierInt = parseInt(selectedTier, 10);
+      const tx = await contract.commitPolicy(`0x${locationHash}`, tierInt, { gasLimit: 300000 });
       setStatus('Transaction submitted. Waiting for confirmation...');
       
       await tx.wait();
@@ -193,6 +210,16 @@ export default function Dashboard() {
 
   return (
     <div className={styles.container}>
+      <Toaster 
+        position="top-right" 
+        toastOptions={{
+          style: {
+            background: '#1e293b',
+            color: '#f8fafc',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }
+        }}
+      />
       <header className={styles.header}>
         <Link href="/" className={styles.logo}>Zk-AgriSure Sophisticated Dashboard</Link>
         {account ? (
@@ -223,7 +250,52 @@ export default function Dashboard() {
             </div>
             
             <div className={styles.infoBox}>
-              Click on the interactive map below to drop a pin on your farm. We will generate a cryptographic <b>Poseidon Hash</b> locally in your browser to anchor your location on-chain.
+              Fill out your farm details and click on the interactive map below to drop a pin on your farm. We will generate a cryptographic <b>Poseidon Hash</b> locally in your browser to anchor your location on-chain.
+            </div>
+
+            <div className={styles.formGrid}>
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Full Name</label>
+                <input 
+                  type="text" 
+                  className={styles.input} 
+                  placeholder="John Doe" 
+                  value={farmerName}
+                  onChange={(e) => setFarmerName(e.target.value)}
+                />
+              </div>
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Farm Size (Acres)</label>
+                <input 
+                  type="number" 
+                  className={styles.input} 
+                  placeholder="50" 
+                  value={farmSize}
+                  onChange={(e) => setFarmSize(e.target.value)}
+                />
+              </div>
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Crop Type</label>
+                <input 
+                  type="text" 
+                  className={styles.input} 
+                  placeholder="Wheat" 
+                  value={cropType}
+                  onChange={(e) => setCropType(e.target.value)}
+                />
+              </div>
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Insurance Tier</label>
+                <select 
+                  className={`${styles.input} ${styles.selectInput}`}
+                  value={selectedTier}
+                  onChange={(e) => setSelectedTier(e.target.value)}
+                >
+                  <option value="1">Basic (0.1 ETH Payout)</option>
+                  <option value="2">Premium (0.5 ETH Payout)</option>
+                  <option value="3">Enterprise (1.0 ETH Payout)</option>
+                </select>
+              </div>
             </div>
 
             <MapVisualizer 
