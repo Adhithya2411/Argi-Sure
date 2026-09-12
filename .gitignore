@@ -12,3 +12,8 @@ artifacts/
 cache/
 typechain-types/
 coverage/
+
+# Local project management files
+PROJECT_STATUS.md
+frontend/AGENTS.md
+frontend/CLAUDE.md
