@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import dynamic from 'next/dynamic';
 import { generateProof, hashLocation } from '../../utils/zkp';
-import { ESCROW_ABI, ESCROW_ADDRESS } from '../../utils/contract';
+import { ESCROW_ABI, ESCROW_ADDRESS, LOCAL_ORACLE_ABI, LOCAL_ORACLE_ADDRESS, AGRI_ORACLE_ADDRESS } from '../../utils/contract';
 import styles from './dashboard.module.css';
 import Link from 'next/link';
 import { Toaster, toast } from 'react-hot-toast';
@@ -216,6 +216,34 @@ export default function Dashboard() {
     }
   };
 
+  const handleDemoTriggerDisaster = async () => {
+    try {
+      setStatus('Simulating Chainlink Node fulfilling Disaster Data...');
+      const signer = await provider.getSigner();
+      const localOracleContract = new ethers.Contract(LOCAL_ORACLE_ADDRESS, LOCAL_ORACLE_ABI, signer);
+      
+      const reqId = ethers.id("DemoReqId");
+      const selector = ethers.id("fulfillDisasterData(bytes32,uint256,uint256,uint256,uint256)").substring(0, 10);
+      
+      const tx = await localOracleContract.fulfillOracleRequest(
+        AGRI_ORACLE_ADDRESS,
+        selector,
+        reqId,
+        Math.round(29.0000 * 10000000), // minLat
+        Math.round(31.5000 * 10000000), // maxLat
+        Math.round(-98.5000 * 10000000), // minLon
+        Math.round(-96.0000 * 10000000) // maxLon
+      );
+      await tx.wait();
+      toast.success("Disaster triggered locally!");
+      setStatus('');
+    } catch (err) {
+      console.error(err);
+      setError("Failed to trigger mock disaster.");
+      setStatus('');
+    }
+  };
+
   // Step 3: Private Settlement
   const handleClaim = async () => {
     if (!farmPosition) return setError("Please drop a pin on your farm location.");
@@ -411,6 +439,14 @@ export default function Dashboard() {
               <div className={styles.infoBox}>
                 Chainlink Decentralized Oracle Networks automatically broadcast macro-level disaster geometries from NOAA ML Models.
               </div>
+
+              <button 
+                className={styles.button}
+                onClick={handleDemoTriggerDisaster}
+                style={{ marginBottom: '1.5rem', background: '#eab308', color: '#000', border: 'none' }}
+              >
+                [Dev Mode] Trigger Simulated NOAA Disaster (Austin, TX)
+              </button>
 
               {activeDisaster ? (
                 <>

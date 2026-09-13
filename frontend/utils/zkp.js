@@ -42,10 +42,10 @@ export async function generateProof(disasterZone, farmerLocation, onLog = () => 
 
     // Structure inputs exactly as required by the Circom circuit
     const input = {
-        min_lat: disasterZone.minLat.toString(),
-        max_lat: disasterZone.maxLat.toString(),
-        min_lon: disasterZone.minLon.toString(),
-        max_lon: disasterZone.maxLon.toString(),
+        min_lat: scaleCoordinate(disasterZone.minLat),
+        max_lat: scaleCoordinate(disasterZone.maxLat),
+        min_lon: scaleCoordinate(disasterZone.minLon),
+        max_lon: scaleCoordinate(disasterZone.maxLon),
         farmer_lat: scaleCoordinate(farmerLocation.lat),
         farmer_lon: scaleCoordinate(farmerLocation.lon)
     };

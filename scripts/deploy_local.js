@@ -61,12 +61,32 @@ async function main() {
   // Update frontend contract configuration
   const contractPath = path.join(__dirname, "../frontend/utils/contract.js");
   let contractFile = fs.readFileSync(contractPath, "utf8");
+  
   contractFile = contractFile.replace(
     /export const ESCROW_ADDRESS = ".*";/,
     `export const ESCROW_ADDRESS = "${escrowAddr}";`
   );
+  
+  if (contractFile.includes("LOCAL_ORACLE_ADDRESS")) {
+    contractFile = contractFile.replace(
+      /export const LOCAL_ORACLE_ADDRESS = ".*";/,
+      `export const LOCAL_ORACLE_ADDRESS = "${mockOracleAddr}";`
+    );
+  } else {
+    contractFile = `export const LOCAL_ORACLE_ADDRESS = "${mockOracleAddr}";\n` + contractFile;
+  }
+  
+  if (contractFile.includes("AGRI_ORACLE_ADDRESS")) {
+    contractFile = contractFile.replace(
+      /export const AGRI_ORACLE_ADDRESS = ".*";/,
+      `export const AGRI_ORACLE_ADDRESS = "${agriOracleAddr}";`
+    );
+  } else {
+    contractFile = `export const AGRI_ORACLE_ADDRESS = "${agriOracleAddr}";\n` + contractFile;
+  }
+
   fs.writeFileSync(contractPath, contractFile);
-  console.log("Updated frontend ESCROW_ADDRESS");
+  console.log("Updated frontend addresses");
 }
 
 main().catch((error) => {
