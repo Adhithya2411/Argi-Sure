@@ -15,7 +15,11 @@ coverage/
 
 # Local project management files
 PROJECT_STATUS.md
+PROJECT_BIBLE.md
 frontend/AGENTS.md
 frontend/CLAUDE.md
 improvements.md
+
+# University Assignments
 da6_assignment/
+*.zip
