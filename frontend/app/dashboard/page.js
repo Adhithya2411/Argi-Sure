@@ -90,8 +90,17 @@ export default function Dashboard() {
       const escrowContract = new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
       setContract(escrowContract);
       
-      // Setup event listeners
-      escrowContract.on("PolicyCommitted", (farmer, locationHash, event) => {
+      // Note: Event listeners are now handled in a dedicated useEffect to prevent duplicate logs in React Strict Mode.
+      checkRegistrationStatus(escrowContract, accounts[0]);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Dedicated useEffect for Contract Event Listeners to prevent React Strict Mode duplicates
+  useEffect(() => {
+    if (contract) {
+      const handlePolicyCommitted = (farmer, locationHash, event) => {
         toast.success(`Policy Committed for ${farmer.substring(0,6)}...`);
         setNetworkEvents(prev => [{
           type: 'PolicyCommitted',
@@ -99,39 +108,64 @@ export default function Dashboard() {
           farmer: farmer,
           timestamp: new Date().toLocaleTimeString()
         }, ...prev]);
-      });
+      };
 
-      escrowContract.on("PayoutClaimed", (farmer, amount, event) => {
+      const handlePayoutClaimed = (farmer, amount, event) => {
         toast.success(`Payout Claimed! ${ethers.formatEther(amount)} ETH`);
         setNetworkEvents(prev => [{
           type: 'PayoutClaimed (ZK-Verified)',
-          hash: event.log.transactionHash,
+          hash: event.log.transactionHash, // ethers v6 log property
           farmer: farmer,
           amount: ethers.formatEther(amount),
           timestamp: new Date().toLocaleTimeString()
         }, ...prev]);
-      });
+      };
 
-      escrowContract.on("DisasterTriggered", (minLat, maxLat, minLon, maxLon, event) => {
-        toast.error('NOAA Disaster Triggered On-Chain!', { duration: 5000 });
-        checkRegistrationStatus(escrowContract, accounts[0]);
-      });
+      const handleDisasterTriggered = (minLat, maxLat, minLon, maxLon, event) => {
+        toast.error('Oracle Disaster Triggered On-Chain!', { duration: 5000 });
+        if (account) {
+          checkRegistrationStatus(contract, account);
+        }
+      };
 
-      checkRegistrationStatus(escrowContract, accounts[0]);
-    } catch (err) {
-      setError(err.message);
+      contract.on("PolicyCommitted", handlePolicyCommitted);
+      contract.on("PayoutClaimed", handlePayoutClaimed);
+      contract.on("DisasterTriggered", handleDisasterTriggered);
+
+      return () => {
+        contract.off("PolicyCommitted", handlePolicyCommitted);
+        contract.off("PayoutClaimed", handlePayoutClaimed);
+        contract.off("DisasterTriggered", handleDisasterTriggered);
+      };
     }
-  };
+  }, [contract, account]);
 
-  // Cleanup listeners on unmount
+  // Handle MetaMask account/chain changes for robust UX
   useEffect(() => {
-    return () => {
-      if (contract) {
-        contract.removeAllListeners("PolicyCommitted");
-        contract.removeAllListeners("PayoutClaimed");
-        contract.removeAllListeners("DisasterTriggered");
-      }
-    };
+    if (window.ethereum) {
+      const handleAccountsChanged = (accounts) => {
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          if (contract) checkRegistrationStatus(contract, accounts[0]);
+        } else {
+          setAccount('');
+          setIsRegistered(false);
+          setContract(null);
+        }
+      };
+      
+      const handleChainChanged = () => {
+        window.location.reload();
+      };
+
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+
+      return () => {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+      };
+    }
   }, [contract]);
 
   const checkRegistrationStatus = async (escrowContract, userAddress) => {
@@ -218,7 +252,7 @@ export default function Dashboard() {
 
   const handleDemoTriggerDisaster = async () => {
     try {
-      setStatus('Simulating Chainlink Node fulfilling Disaster Data...');
+      setStatus('Executing manual override: Oracle Bounding Box Sync...');
       const signer = await provider.getSigner();
       const localOracleContract = new ethers.Contract(LOCAL_ORACLE_ADDRESS, LOCAL_ORACLE_ABI, signer);
       
@@ -239,7 +273,7 @@ export default function Dashboard() {
       setStatus('');
     } catch (err) {
       console.error(err);
-      setError("Failed to trigger mock disaster.");
+      setError("Failed to trigger Oracle disaster event.");
       setStatus('');
     }
   };
@@ -440,13 +474,14 @@ export default function Dashboard() {
                 Chainlink Decentralized Oracle Networks automatically broadcast macro-level disaster geometries from NOAA ML Models.
               </div>
 
-              <button 
-                className={styles.button}
-                onClick={handleDemoTriggerDisaster}
-                style={{ marginBottom: '1.5rem', background: '#eab308', color: '#000', border: 'none' }}
-              >
-                [Dev Mode] Trigger Simulated NOAA Disaster (Austin, TX)
-              </button>
+              <div className="mt-8 text-center pt-8 border-t border-gray-800">
+                <button 
+                  onClick={handleDemoTriggerDisaster}
+                  className="text-xs text-red-500/50 hover:text-red-500 transition-colors"
+                >
+                  [Admin] Force Trigger Oracle Bounding Box Broadcast
+                </button>
+              </div>
 
               {activeDisaster ? (
                 <>

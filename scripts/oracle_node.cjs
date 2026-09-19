@@ -22,8 +22,8 @@ async function main() {
         return;
     }
 
-    console.log(`\n🚨 CRITICAL ALERT: Disaster Probability: ${(data.probability * 100).toFixed(2)}%`);
-    console.log(`Weather Metrics: ${data.weather.rainfall}mm rainfall, ${data.weather.temp}°C`);
+    console.log(`\n🚨 CRITICAL ALERT: AI Earthquake Probability: ${(data.probability * 100).toFixed(2)}%`);
+    console.log(`Disaster Metrics: Magnitude ${data.weather.magnitude} at ${data.weather.location}`);
     console.log(`Target Bounding Box: 
         MinLat: ${data.boundingBox.minLat}
         MaxLat: ${data.boundingBox.maxLat}
@@ -31,14 +31,12 @@ async function main() {
         MaxLon: ${data.boundingBox.maxLon}
     `);
 
-    // 2. Format Coordinates for Smart Contract (Multiply by 10^6)
-    const scale = 1e6;
-    const minLat = Math.round(data.boundingBox.minLat * scale);
-    const maxLat = Math.round(data.boundingBox.maxLat * scale);
-    // Remember Longitude is usually negative in US, our contract logic expects positive representation or absolute if signed isn't used
-    // Actually, in our contract we used absolute * 1e6. Let's just multiply.
-    const minLon = Math.round(Math.abs(data.boundingBox.minLon) * scale);
-    const maxLon = Math.round(Math.abs(data.boundingBox.maxLon) * scale);
+    // 2. Format Coordinates for Smart Contract 
+    // The oracle API already returns the scaled oracle_payload from USGS dataset
+    const minLat = data.boundingBox.minLat;
+    const maxLat = data.boundingBox.maxLat;
+    const minLon = data.boundingBox.minLon;
+    const maxLon = data.boundingBox.maxLon;
 
     // 3. Connect to Smart Contract
     // Use the AgriSureOracle contract address. We need to load it from our local deployment.

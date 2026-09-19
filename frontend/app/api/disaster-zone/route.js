@@ -15,49 +15,44 @@ export async function GET() {
         const net = new brain.NeuralNetwork();
         net.fromJSON(modelJson);
 
-        // 2. Fetch latest live weather dataset (simulated)
-        const datasetPath = path.join(process.cwd(), '../data/weather_dataset.json');
+        // 2. Fetch live USGS earthquake feed (simulated from our real dataset)
+        const datasetPath = path.join(process.cwd(), '../datasets/USGS_Severe_Earthquakes_1789038323.json');
         const dataset = JSON.parse(fs.readFileSync(datasetPath, 'utf8'));
 
-        // 3. Find the most severe disaster zone based on AI prediction
+        // 3. Find the most severe earthquake disaster zone based on AI prediction
         let worstDisaster = null;
         let highestProbability = 0;
 
         for (const data of dataset) {
+            const centerLat = ((data.oracle_payload.minLat + data.oracle_payload.maxLat) / 2) / 1e6;
+            const centerLon = ((data.oracle_payload.minLon + data.oracle_payload.maxLon) / 2) / 1e6;
+            
             const input = {
-                rainfall: data.rainfall / 100,
-                temp: data.temp / 50
+                lat: (centerLat + 90) / 180,
+                lon: (centerLon + 180) / 360
             };
             const output = net.run(input);
-            if (output.disaster > highestProbability) {
-                highestProbability = output.disaster;
+            if (output.magnitude > highestProbability) {
+                highestProbability = output.magnitude;
                 worstDisaster = data;
             }
         }
 
-        // 4. Return Bounding Box if a disaster is highly probable (> 80%)
-        if (highestProbability > 0.8 && worstDisaster) {
-            // Generate a 0.2 degree bounding box around the center
-            const offset = 0.1;
+        // 4. Return Bounding Box if an earthquake is highly probable
+        // (Highest probability represents normalized severity)
+        if (highestProbability > 0.5 && worstDisaster) {
             
-            // Note: Oracle contract expects scaled integers (lat/lon * 10^6)
-            // But we will return raw floats from API, Oracle Node script will scale them
             return NextResponse.json({
                 disasterDetected: true,
                 probability: highestProbability,
                 center: {
-                    lat: worstDisaster.lat,
-                    lon: worstDisaster.lon
+                    lat: ((worstDisaster.oracle_payload.minLat + worstDisaster.oracle_payload.maxLat) / 2) / 1e6,
+                    lon: ((worstDisaster.oracle_payload.minLon + worstDisaster.oracle_payload.maxLon) / 2) / 1e6
                 },
-                boundingBox: {
-                    minLat: worstDisaster.lat - offset,
-                    maxLat: worstDisaster.lat + offset,
-                    minLon: worstDisaster.lon - offset,
-                    maxLon: worstDisaster.lon + offset
-                },
+                boundingBox: worstDisaster.oracle_payload,
                 weather: {
-                    rainfall: worstDisaster.rainfall,
-                    temp: worstDisaster.temp
+                    magnitude: worstDisaster.severity_magnitude,
+                    location: worstDisaster.location
                 }
             });
         }
