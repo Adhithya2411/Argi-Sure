@@ -133,4 +133,16 @@ contract AgriSureEscrow {
 
         emit PayoutClaimed(msg.sender, payout);
     }
+
+    // DEV ONLY: Reset state for a farmer to allow repeating the demo
+    function devReset() external {
+        isRegistered[msg.sender] = false;
+        policyHashes[msg.sender] = 0;
+        farmerTiers[msg.sender] = Tier.None;
+        // We do not reset nextDisasterId to avoid messing up other farmers,
+        // but we reset the claim status for the previous disaster to allow re-claiming
+        // if they trigger a new disaster later.
+        uint256 lastDisaster = nextDisasterId > 1 ? nextDisasterId - 1 : 0;
+        hasClaimed[msg.sender][lastDisaster] = false;
+    }
 }

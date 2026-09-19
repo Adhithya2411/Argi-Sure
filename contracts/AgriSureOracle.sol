@@ -100,6 +100,25 @@ contract AgriSureOracle is ChainlinkClient, ConfirmedOwner {
     }
 
     /**
+     * @notice Dev Mode: Trigger a disaster directly without a Chainlink request
+     * This avoids needing LINK tokens and parsing the request ID for local UI demos.
+     */
+    function devTriggerDisaster(
+        uint256 _minLat,
+        uint256 _maxLat,
+        uint256 _minLon,
+        uint256 _maxLon
+    ) public {
+        emit DisasterDataFulfilled(bytes32(0), _minLat, _maxLat, _minLon, _maxLon);
+        minLat = _minLat;
+        maxLat = _maxLat;
+        minLon = _minLon;
+        maxLon = _maxLon;
+
+        escrow.triggerDisaster(_minLat, _maxLat, _minLon, _maxLon);
+    }
+
+    /**
      * @notice Allow withdraw of Link tokens from the contract
      */
     function withdrawLink() public onlyOwner {

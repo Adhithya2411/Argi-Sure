@@ -15,9 +15,13 @@ L.Icon.Default.mergeOptions({
 function MapUpdater({ position }) {
   const map = useMap();
   useEffect(() => {
-    if (position) {
-      map.flyTo(position, 13);
-    }
+    // Give the DOM a tiny bit of time to settle, then invalidate size to fix gray box glitches
+    setTimeout(() => {
+      map.invalidateSize();
+      if (position) {
+        map.flyTo(position, 13);
+      }
+    }, 100);
   }, [position, map]);
   return null;
 }
