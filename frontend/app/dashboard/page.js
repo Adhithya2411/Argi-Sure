@@ -2,8 +2,25 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import dynamic from 'next/dynamic';
-import { generateProof, hashLocation } from '../../utils/zkp';
+import { generateProof, hashLocation, toUintLat, toUintLon, fromUintLat, fromUintLon } from '../../utils/zkp';
 import { ESCROW_ABI, ESCROW_ADDRESS, LOCAL_ORACLE_ABI, LOCAL_ORACLE_ADDRESS, AGRI_ORACLE_ADDRESS } from '../../utils/contract';
+import { getReadProvider, ensureWalletNetwork, syncWalletWithNode, decodeError } from '../../utils/chain';
+
+const escrowInterface = new ethers.Interface(ESCROW_ABI);
+const getReadEscrow = () => new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, getReadProvider());
+
+// Builds a signer-backed escrow contract after making sure MetaMask is on the right chain
+// and its block tracker is not stuck on a block from a previous (restarted) local chain.
+async function getWriteContext() {
+  await ensureWalletNetwork();
+  const sync = await syncWalletWithNode();
+  if (sync.resynced) {
+    console.info(`Resynced wallet block tracker (wallet was at ${sync.walletBlock}, node now at ${sync.nodeBlock}).`);
+  }
+  const web3Provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await web3Provider.getSigner();
+  return { web3Provider, signer, escrow: new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, signer) };
+}
 import styles from './dashboard.module.css';
 import Link from 'next/link';
 import { Toaster, toast } from 'react-hot-toast';
@@ -36,6 +53,7 @@ export default function Dashboard() {
   const [zkComplete, setZkComplete] = useState(false);
   const [zkLogs, setZkLogs] = useState([]);
   const [networkEvents, setNetworkEvents] = useState([]);
+  const [syncRequested, setSyncRequested] = useState(false);
 
   // Form State
   const [farmerName, setFarmerName] = useState('');
@@ -46,48 +64,22 @@ export default function Dashboard() {
   // Geocoding State
   const [searchAddress, setSearchAddress] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 1. Web3 Authentication
   const connectWallet = async () => {
     try {
       if (!window.ethereum) throw new Error("Please install MetaMask!");
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      setAccount(accounts[0]);
 
-      // Force MetaMask to switch to Hardhat Localhost (Chain ID: 31337)
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x7A69' }], // 31337 in hex
-        });
-      } catch (switchError) {
-        // This error code indicates that the chain has not been added to MetaMask.
-        if (switchError.code === 4902) {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: '0x7A69',
-                chainName: 'Hardhat Localhost',
-                rpcUrls: ['http://127.0.0.1:8545/'],
-                nativeCurrency: {
-                  name: 'Ethereum',
-                  symbol: 'ETH',
-                  decimals: 18,
-                },
-              },
-            ],
-          });
-        } else {
-          throw new Error("Failed to switch to the Hardhat network in MetaMask.");
-        }
+      const code = await getReadProvider().getCode(ESCROW_ADDRESS);
+      if (code === '0x') {
+        throw new Error(`No AgriSureEscrow contract at ${ESCROW_ADDRESS} on the node. Run the deploy script against this node.`);
       }
 
-      const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      const { web3Provider, escrow: escrowContract } = await getWriteContext();
+      setAccount(accounts[0]);
       setProvider(web3Provider);
-      
-      const signer = await web3Provider.getSigner();
-      const escrowContract = new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
       setContract(escrowContract);
       
       // Note: Event listeners are now handled in a dedicated useEffect to prevent duplicate logs in React Strict Mode.
@@ -100,6 +92,8 @@ export default function Dashboard() {
   // Dedicated useEffect for Contract Event Listeners to prevent React Strict Mode duplicates
   useEffect(() => {
     if (contract) {
+      // Listen through the direct node provider so events aren't affected by MetaMask's filter cache
+      const eventSource = getReadEscrow();
       const handlePolicyCommitted = (farmer, locationHash, event) => {
         toast.success(`Policy Committed for ${farmer.substring(0,6)}...`);
         setNetworkEvents(prev => [{
@@ -125,17 +119,16 @@ export default function Dashboard() {
         toast.error('Oracle Disaster Triggered On-Chain!', { duration: 5000 });
         if (account) {
           checkRegistrationStatus(contract, account);
+          setSyncRequested(true);
         }
       };
 
-      contract.on("PolicyCommitted", handlePolicyCommitted);
-      contract.on("PayoutClaimed", handlePayoutClaimed);
-      contract.on("DisasterTriggered", handleDisasterTriggered);
+      eventSource.on("PolicyCommitted", handlePolicyCommitted);
+      eventSource.on("PayoutClaimed", handlePayoutClaimed);
+      eventSource.on("DisasterTriggered", handleDisasterTriggered);
 
       return () => {
-        contract.off("PolicyCommitted", handlePolicyCommitted);
-        contract.off("PayoutClaimed", handlePayoutClaimed);
-        contract.off("DisasterTriggered", handleDisasterTriggered);
+        eventSource.removeAllListeners();
       };
     }
   }, [contract, account]);
@@ -143,10 +136,18 @@ export default function Dashboard() {
   // Handle MetaMask account/chain changes for robust UX
   useEffect(() => {
     if (window.ethereum) {
-      const handleAccountsChanged = (accounts) => {
+      const handleAccountsChanged = async (accounts) => {
         if (accounts.length > 0) {
-          setAccount(accounts[0]);
-          if (contract) checkRegistrationStatus(contract, accounts[0]);
+          try {
+            // Signer must be rebuilt for the new account
+            const { web3Provider, escrow } = await getWriteContext();
+            setAccount(accounts[0]);
+            setProvider(web3Provider);
+            setContract(escrow);
+            checkRegistrationStatus(escrow, accounts[0]);
+          } catch (e) {
+            setError(e.message);
+          }
         } else {
           setAccount('');
           setIsRegistered(false);
@@ -166,10 +167,12 @@ export default function Dashboard() {
         window.ethereum.removeListener('chainChanged', handleChainChanged);
       };
     }
-  }, [contract]);
+  }, []);
 
-  const checkRegistrationStatus = async (escrowContract, userAddress) => {
+  const checkRegistrationStatus = async (_unused, userAddress) => {
     try {
+      // Reads go directly to the node, never through MetaMask's cached block
+      const escrowContract = getReadEscrow();
       const registered = await escrowContract.isRegistered(userAddress);
       setIsRegistered(registered);
       
@@ -183,12 +186,12 @@ export default function Dashboard() {
           const disaster = await escrowContract.disasters(currentDisasterId);
           if (disaster.isActive) {
             setActiveDisasterId(currentDisasterId);
-            // Note: Dividing by 10^7 because contract stores scaled ints
+            // Decode the offsetted uint coordinates
             setActiveDisaster({
-              minLat: Number(disaster.minLat) / 10000000,
-              maxLat: Number(disaster.maxLat) / 10000000,
-              minLon: Number(disaster.minLon) / 10000000,
-              maxLon: Number(disaster.maxLon) / 10000000,
+              minLat: fromUintLat(disaster.minLat),
+              maxLat: fromUintLat(disaster.maxLat),
+              minLon: fromUintLon(disaster.minLon),
+              maxLon: fromUintLon(disaster.maxLon),
             });
           }
         }
@@ -224,9 +227,11 @@ export default function Dashboard() {
   const handleCommitPolicy = async () => {
     if (!farmPosition) return setError("Please drop a pin on the map first.");
     if (!farmerName || !farmSize || !cropType) return setError("Please fill out all farm details.");
+    if (isSubmitting) return;
     
     setStatus('Generating Poseidon Hash locally...');
     setError('');
+    setIsSubmitting(true);
     
     try {
       const lat = farmPosition[0];
@@ -236,44 +241,55 @@ export default function Dashboard() {
       setStatus(`Hash generated: ${locationHash.substring(0, 15)}... Awaiting wallet signature.`);
       
       const tierInt = parseInt(selectedTier, 10);
-      const tx = await contract.commitPolicy(`0x${locationHash}`, tierInt, { gasLimit: 300000 });
+      
+      const { web3Provider, signer, escrow: currentContract } = await getWriteContext();
+      setContract(currentContract);
+      setProvider(web3Provider);
+
+      const hashBytes = ethers.zeroPadValue(`0x${locationHash}`, 32);
+
+      // Preflight against the node directly so a revert shows its real reason
+      await getReadEscrow().commitPolicy.staticCall(hashBytes, tierInt, { from: await signer.getAddress() });
+
+      const tx = await currentContract.commitPolicy(hashBytes, tierInt);
       setStatus('Transaction submitted. Waiting for confirmation...');
       
       await tx.wait();
       setStatus('Policy Committed successfully!');
       
       setIsRegistered(true);
+      setIsSubmitting(false);
     } catch (err) {
+      setIsSubmitting(false);
       console.error(err);
-      setError(err.message || "Failed to commit policy");
+      if (err?.code === 'ACTION_REJECTED') {
+        setError('Transaction rejected in wallet.');
+      } else {
+        setError('Commit failed: ' + decodeError(err, escrowInterface));
+      }
       setStatus('');
     }
   };
 
   const handleDemoTriggerDisaster = async () => {
     try {
-      setStatus('Executing manual override: Oracle Bounding Box Sync...');
-      const signer = await provider.getSigner();
-      const localOracleContract = new ethers.Contract(LOCAL_ORACLE_ADDRESS, LOCAL_ORACLE_ABI, signer);
+      setStatus('Requesting Disaster Data from Chainlink Network...');
       
-      const reqId = ethers.id("DemoReqId");
-      const selector = ethers.id("fulfillDisasterData(bytes32,uint256,uint256,uint256,uint256)").substring(0, 10);
+      const { signer } = await getWriteContext();
+      const agriOracle = new ethers.Contract(AGRI_ORACLE_ADDRESS, [
+        "function requestDisasterData() public returns (bytes32)"
+      ], signer);
       
-      const tx = await localOracleContract.fulfillOracleRequest(
-        AGRI_ORACLE_ADDRESS,
-        selector,
-        reqId,
-        Math.round(29.0000 * 10000000), // minLat
-        Math.round(31.5000 * 10000000), // maxLat
-        Math.round(-98.5000 * 10000000), // minLon
-        Math.round(-96.0000 * 10000000) // maxLon
-      );
+      const tx = await agriOracle.requestDisasterData();
+      
+      setStatus('Transaction submitted. Waiting for Chainlink Node to fulfill the request...');
       await tx.wait();
-      toast.success("Disaster triggered locally!");
-      setStatus('');
+      
+      toast.success("Request sent to Chainlink nodes. The AI Oracle will verify the data shortly.");
+      setTimeout(() => setStatus(''), 4000);
     } catch (err) {
       console.error(err);
-      setError("Failed to trigger Oracle disaster event.");
+      setError("Failed to request Chainlink Data: " + (err.message || "Unknown error"));
       setStatus('');
     }
   };
@@ -307,14 +323,10 @@ export default function Dashboard() {
 
       setStatus('Submitting cryptographic proof to Escrow smart contract...');
       
-      const tx = await contract.claimPayout(
-        activeDisasterId,
-        calldata.a, 
-        calldata.b, 
-        calldata.c, 
-        calldata.Input,
-        { gasLimit: 500000 }
-      );
+      const { signer, escrow } = await getWriteContext();
+      const claimArgs = [activeDisasterId, calldata.a, calldata.b, calldata.c, calldata.Input];
+      await getReadEscrow().claimPayout.staticCall(...claimArgs, { from: await signer.getAddress() });
+      const tx = await escrow.claimPayout(...claimArgs);
       
       await tx.wait();
 
@@ -325,7 +337,12 @@ export default function Dashboard() {
 
     } catch (err) {
       console.error(err);
-      setError("An error occurred during verification. Ensure your farm is inside the active red zone.");
+      if (err.message && err.message.includes("Already claimed")) {
+        setError("You have already claimed your insurance payout for this disaster.");
+        setHasClaimed(true);
+      } else {
+        setError("Claim failed: " + decodeError(err, escrowInterface));
+      }
       setIsProcessingZk(false);
       setStatus('');
     }
@@ -346,8 +363,21 @@ export default function Dashboard() {
       <header className={styles.header}>
         <Link href="/" className={styles.logo}>Zk-AgriSure Sophisticated Dashboard</Link>
         {account ? (
-          <div className={styles.walletBadge}>
-            {account.substring(0, 6)}...{account.substring(account.length - 4)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button 
+              onClick={async () => {
+                const { escrow } = await getWriteContext();
+                const tx = await escrow.devReset();
+                await tx.wait();
+                window.location.reload();
+              }}
+              className="text-xs text-red-500 hover:text-red-400 transition-colors bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20"
+            >
+              [Dev] Reset State
+            </button>
+            <div className={styles.walletBadge}>
+              {account.substring(0, 6)}...{account.substring(account.length - 4)}
+            </div>
           </div>
         ) : (
           <button className={styles.button} style={{ width: 'auto', padding: '0.5rem 1rem' }} onClick={connectWallet}>
@@ -456,10 +486,10 @@ export default function Dashboard() {
             <button 
               className={styles.button}
               onClick={handleCommitPolicy}
-              disabled={!farmPosition}
+              disabled={!farmPosition || isSubmitting}
               style={{ marginTop: '1.5rem' }}
             >
-              Generate Hash & Commit Policy
+              {isSubmitting ? 'Processing...' : 'Generate Hash & Commit Policy'}
             </button>
           </div>
         ) : (
@@ -477,13 +507,13 @@ export default function Dashboard() {
               <div className="mt-8 text-center pt-8 border-t border-gray-800">
                 <button 
                   onClick={handleDemoTriggerDisaster}
-                  className="text-xs text-red-500/50 hover:text-red-500 transition-colors"
+                  className={styles.button}
                 >
-                  [Admin] Force Trigger Oracle Bounding Box Broadcast
+                  Request Chainlink Data Sync
                 </button>
               </div>
 
-              {activeDisaster ? (
+              {activeDisaster && syncRequested ? (
                 <>
                   <MapVisualizer 
                     interactive={false} 
@@ -495,7 +525,7 @@ export default function Dashboard() {
                   </p>
                 </>
               ) : (
-                <p style={{ color: '#94a3b8' }}>No active disaster detected by Oracle.</p>
+                <p style={{ color: '#94a3b8' }}>No active disaster detected yet. Please request a Chainlink Data Sync.</p>
               )}
             </div>
 

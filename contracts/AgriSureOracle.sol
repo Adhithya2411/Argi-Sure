@@ -95,20 +95,21 @@ contract AgriSureOracle is ChainlinkClient, ConfirmedOwner {
         maxLon = _maxLon;
 
         // Trigger the disaster on the Escrow contract
-        uint256 disasterId = escrow.triggerDisaster(_minLat, _maxLat, _minLon, _maxLon);
-        // Could emit an event or store disasterId if needed
+        escrow.triggerDisaster(_minLat, _maxLat, _minLon, _maxLon);
     }
 
     /**
      * @notice Dev Mode: Trigger a disaster directly without a Chainlink request
      * This avoids needing LINK tokens and parsing the request ID for local UI demos.
+     * Restricted to the owner (the deployer / AI oracle node operator) - otherwise
+     * anyone could declare a disaster over their own farm and drain the escrow.
      */
     function devTriggerDisaster(
         uint256 _minLat,
         uint256 _maxLat,
         uint256 _minLon,
         uint256 _maxLon
-    ) public {
+    ) public onlyOwner {
         emit DisasterDataFulfilled(bytes32(0), _minLat, _maxLat, _minLon, _maxLon);
         minLat = _minLat;
         maxLat = _maxLat;

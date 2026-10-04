@@ -50,7 +50,7 @@
     {
         "event_id": "us7000tefx",
         "type": "Severe Earthquake",
-        "location": "168 km ESE of Kuril\u2019sk, Russia",
+        "location": "168 km ESE of Kuril’sk, Russia",
         "severity_magnitude": 5.5,
         "oracle_payload": {
             "minLat": 444418000,
@@ -182,7 +182,7 @@
     {
         "event_id": "us7000tc18",
         "type": "Severe Earthquake",
-        "location": "209 km ESE of \u014cfunato, Japan",
+        "location": "209 km ESE of Ōfunato, Japan",
         "severity_magnitude": 5.6,
         "oracle_payload": {
             "minLat": 376821000,
@@ -242,7 +242,7 @@
     {
         "event_id": "us6000tmz6",
         "type": "Severe Earthquake",
-        "location": "32 km SSW of Honch\u014d, Japan",
+        "location": "32 km SSW of Honchō, Japan",
         "severity_magnitude": 6,
         "oracle_payload": {
             "minLat": 413495000,
@@ -494,7 +494,7 @@
     {
         "event_id": "us6000tkvj",
         "type": "Severe Earthquake",
-        "location": "43 km SE of Severo-Kuril\u2019sk, Russia",
+        "location": "43 km SE of Severo-Kuril’sk, Russia",
         "severity_magnitude": 5.5,
         "oracle_payload": {
             "minLat": 498726000,
@@ -602,7 +602,7 @@
     {
         "event_id": "us6000tkcb",
         "type": "Severe Earthquake",
-        "location": "48 km SSW of Intipuc\u00e1, El Salvador",
+        "location": "48 km SSW of Intipucá, El Salvador",
         "severity_magnitude": 5.5,
         "oracle_payload": {
             "minLat": 122675000,

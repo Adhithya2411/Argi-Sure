@@ -12,17 +12,31 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-function MapUpdater({ position }) {
+function MapUpdater({ position, bounds }) {
   const map = useMap();
   useEffect(() => {
-    // Give the DOM a tiny bit of time to settle, then invalidate size to fix gray box glitches
-    setTimeout(() => {
-      map.invalidateSize();
-      if (position) {
-        map.flyTo(position, 13);
+    let isActive = true;
+    const timer = setTimeout(() => {
+      // Check if map is still valid and not destroyed before calling methods
+      if (isActive && map && map._loaded) {
+        try {
+          map.invalidateSize();
+          if (bounds) {
+            map.fitBounds(bounds, { padding: [20, 20] });
+          } else if (position) {
+            map.flyTo(position, 13);
+          }
+        } catch (e) {
+          console.warn("Leaflet map update safely caught:", e);
+        }
       }
     }, 100);
-  }, [position, map]);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
+  }, [position, bounds, map]);
   return null;
 }
 
@@ -75,7 +89,7 @@ export default function MapVisualizer({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapUpdater position={position} />
+        <MapUpdater position={position} bounds={bounds} />
         
         {interactive && setPosition && (
           <LocationMarker position={position} setPosition={setPosition} />

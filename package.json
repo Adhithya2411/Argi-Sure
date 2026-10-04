@@ -20,15 +20,17 @@
   "homepage": "https://github.com/Adhithya2411/Argi-Sure#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "circomlibjs": "^0.1.7",
     "ethers": "^6.17.0",
     "hardhat": "^2.29.1",
-    "hardhat-gas-reporter": "^2.3.0",
+    "hardhat-gas-reporter": "^1.0.10",
     "snarkjs": "^0.7.6"
   },
   "dependencies": {
     "@chainlink/contracts": "^0.8.0",
     "@playwright/test": "^1.63.0",
     "brain.js": "^2.0.0-beta.24",
+    "dotenv": "^18.0.5",
     "playwright": "^1.63.0"
   }
 }

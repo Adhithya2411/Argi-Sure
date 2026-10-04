@@ -24,3 +24,9 @@ improvements.md
 # University Assignments
 da6_assignment/
 *.zip
+.env
+
+# Scratch and media
+api_out.json
+Screenshot*.png
+screenshot*.png

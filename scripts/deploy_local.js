@@ -58,32 +58,43 @@ async function main() {
   await fundTx.wait();
   console.log("Funded Escrow with 10 ETH.");
 
+  // 8. Fund AgriSureOracle with 100 LINK
+  const linkTransferTx = await linkToken.transfer(agriOracleAddr, hre.ethers.parseEther("100.0"));
+  await linkTransferTx.wait();
+  console.log("Funded AgriSureOracle with 100 LINK.");
+
+  // Persist addresses for Node scripts (oracle_node.cjs, trigger_disaster.js)
+  const network = await hre.ethers.provider.getNetwork();
+  const deploymentsDir = path.join(__dirname, "../deployments");
+  fs.mkdirSync(deploymentsDir, { recursive: true });
+  const deployment = {
+    chainId: Number(network.chainId),
+    deployer: deployer.address,
+    Groth16Verifier: verifierAddr,
+    AgriSureEscrow: escrowAddr,
+    LocalLinkToken: linkAddr,
+    LocalOracle: mockOracleAddr,
+    AgriSureOracle: agriOracleAddr,
+    deployedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(path.join(deploymentsDir, `${hre.network.name}.json`), JSON.stringify(deployment, null, 2));
+  console.log(`Wrote deployments/${hre.network.name}.json`);
+
   // Update frontend contract configuration
   const contractPath = path.join(__dirname, "../frontend/utils/contract.js");
   let contractFile = fs.readFileSync(contractPath, "utf8");
-  
-  contractFile = contractFile.replace(
-    /export const ESCROW_ADDRESS = ".*";/,
-    `export const ESCROW_ADDRESS = "${escrowAddr}";`
-  );
-  
-  if (contractFile.includes("LOCAL_ORACLE_ADDRESS")) {
-    contractFile = contractFile.replace(
-      /export const LOCAL_ORACLE_ADDRESS = ".*";/,
-      `export const LOCAL_ORACLE_ADDRESS = "${mockOracleAddr}";`
-    );
-  } else {
-    contractFile = `export const LOCAL_ORACLE_ADDRESS = "${mockOracleAddr}";\n` + contractFile;
-  }
-  
-  if (contractFile.includes("AGRI_ORACLE_ADDRESS")) {
-    contractFile = contractFile.replace(
-      /export const AGRI_ORACLE_ADDRESS = ".*";/,
-      `export const AGRI_ORACLE_ADDRESS = "${agriOracleAddr}";`
-    );
-  } else {
-    contractFile = `export const AGRI_ORACLE_ADDRESS = "${agriOracleAddr}";\n` + contractFile;
-  }
+
+  const setConst = (name, value) => {
+    const re = new RegExp(`export const ${name} = ".*";`);
+    if (re.test(contractFile)) {
+      contractFile = contractFile.replace(re, `export const ${name} = "${value}";`);
+    } else {
+      contractFile = `export const ${name} = "${value}";\n` + contractFile;
+    }
+  };
+  setConst("ESCROW_ADDRESS", escrowAddr);
+  setConst("LOCAL_ORACLE_ADDRESS", mockOracleAddr);
+  setConst("AGRI_ORACLE_ADDRESS", agriOracleAddr);
 
   fs.writeFileSync(contractPath, contractFile);
   console.log("Updated frontend addresses");

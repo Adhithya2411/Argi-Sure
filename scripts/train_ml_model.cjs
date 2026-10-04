@@ -4,7 +4,10 @@ const path = require('path');
 
 async function main() {
     console.log("Loading Real USGS Earthquake Dataset...");
-    const datasetPath = path.join(__dirname, '../datasets/USGS_Severe_Earthquakes_1789038323.json');
+    const datasetsDir = path.join(__dirname, '../datasets');
+    const latest = fs.readdirSync(datasetsDir).filter(f => /^USGS_.*\.json$/.test(f)).sort().pop();
+    if (!latest) throw new Error("No USGS dataset found. Run: python scripts/dataset_ingestion.py");
+    const datasetPath = path.join(datasetsDir, latest);
     const rawData = JSON.parse(fs.readFileSync(datasetPath, 'utf8'));
 
     console.log(`Loaded ${rawData.length} historical severe earthquake records.`);
@@ -14,9 +17,9 @@ async function main() {
     // Lat ranges from -90 to 90. Lon from -180 to 180.
     // Max Magnitude assumed 10.0
     const trainingData = rawData.map(event => {
-        // The oracle_payload is stored in integers scaled by 1e6
-        const centerLat = ((event.oracle_payload.minLat + event.oracle_payload.maxLat) / 2) / 1e6;
-        const centerLon = ((event.oracle_payload.minLon + event.oracle_payload.maxLon) / 2) / 1e6;
+        // The oracle_payload is stored in integers scaled by 1e7 (dataset_ingestion.py SCALE_FACTOR)
+        const centerLat = ((event.oracle_payload.minLat + event.oracle_payload.maxLat) / 2) / 1e7;
+        const centerLon = ((event.oracle_payload.minLon + event.oracle_payload.maxLon) / 2) / 1e7;
 
         return {
             input: {
@@ -51,6 +54,7 @@ async function main() {
     // 4. Save Model
     const modelJson = net.toJSON();
     const modelPath = path.join(__dirname, '../data/trained_model.json');
+    fs.mkdirSync(path.dirname(modelPath), { recursive: true });
     fs.writeFileSync(modelPath, JSON.stringify(modelJson));
     console.log(`\n✅ Model successfully exported to ${modelPath}`);
 }

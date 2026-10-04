@@ -72,6 +72,8 @@ export async function generateProof(disasterZone, farmerLocation, onLog = () => 
     onLog("[INFO] Initializing Edge-Computation Protocol...");
     onLog("[DEBUG] Scaling GPS Float Telemetry by 10^7 factor + offset...");
 
+    const locHashHex = await hashLocation(farmerLocation.lat, farmerLocation.lon);
+    
     // Structure inputs exactly as required by the Circom circuit.
     // All values must be non-negative integers (the circuit uses LessEqThan(64)).
     const input = {
@@ -80,7 +82,8 @@ export async function generateProof(disasterZone, farmerLocation, onLog = () => 
         min_lon: toUintLon(disasterZone.minLon),
         max_lon: toUintLon(disasterZone.maxLon),
         farmer_lat: toUintLat(farmerLocation.lat),
-        farmer_lon: toUintLon(farmerLocation.lon)
+        farmer_lon: toUintLon(farmerLocation.lon),
+        location_hash: BigInt("0x" + locHashHex).toString()
     };
 
     onLog("[DEBUG] Compiling discrete inputs to Rank-1 Constraint System (R1CS)...");

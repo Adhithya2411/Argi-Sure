@@ -1,60 +1,79 @@
 import { expect } from "chai";
 import pkg from "hardhat";
+import path from "path";
+import { fileURLToPath } from "url";
+import * as snarkjs from "snarkjs";
+import { DEMO_ZONE, DEMO_FARM, toUintLat, toUintLon, poseidonLocation, toBytes32 } from "../scripts/lib/geo.mjs";
 const { ethers } = pkg;
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 describe("Zk-AgriSure: Performance & Gas Benchmarking", function () {
+  this.timeout(180_000);
+
   let escrow, oracle;
-  let owner, farmer, node;
+  let owner, farmer;
+  const zoneU = [
+    toUintLat(DEMO_ZONE.minLat),
+    toUintLat(DEMO_ZONE.maxLat),
+    toUintLon(DEMO_ZONE.minLon),
+    toUintLon(DEMO_ZONE.maxLon),
+  ];
+  const farmU = [toUintLat(DEMO_FARM.lat), toUintLon(DEMO_FARM.lon)];
 
   before(async function () {
-    [owner, farmer, node] = await ethers.getSigners();
+    [owner, farmer] = await ethers.getSigners();
 
     // 1. Deploy Verifier
-    const Verifier = await ethers.getContractFactory("Groth16Verifier");
-    const verifier = await Verifier.deploy();
-    await verifier.waitForDeployment();
-    const verifierAddr = await verifier.getAddress();
-
+    const verifier = await (await ethers.getContractFactory("Groth16Verifier")).deploy();
     // 2. Deploy Escrow
-    const Escrow = await ethers.getContractFactory("AgriSureEscrow");
-    escrow = await Escrow.deploy(verifierAddr);
-    await escrow.waitForDeployment();
-    const escrowAddr = await escrow.getAddress();
-
+    escrow = await (await ethers.getContractFactory("AgriSureEscrow")).deploy(await verifier.getAddress());
     // 3. Deploy Local LINK Token
-    const MockLink = await ethers.getContractFactory("LocalLinkToken");
-    const linkToken = await MockLink.deploy();
-    await linkToken.waitForDeployment();
-    const linkAddr = await linkToken.getAddress();
-
+    const linkToken = await (await ethers.getContractFactory("LocalLinkToken")).deploy();
     // 4. Deploy Local Oracle
-    const MockOracle = await ethers.getContractFactory("LocalOracle");
-    const mockOracle = await MockOracle.deploy();
-    await mockOracle.waitForDeployment();
-    const mockOracleAddr = await mockOracle.getAddress();
-
+    const mockOracle = await (await ethers.getContractFactory("LocalOracle")).deploy();
     // 5. Deploy AgriSureOracle
-    const Oracle = await ethers.getContractFactory("AgriSureOracle");
-    oracle = await Oracle.deploy(escrowAddr, linkAddr, mockOracleAddr);
-    await oracle.waitForDeployment();
-    const oracleAddr = await oracle.getAddress();
-
-    // 6. Setup Escrow -> Oracle permissions
-    await escrow.setOracle(oracleAddr);
+    oracle = await (await ethers.getContractFactory("AgriSureOracle")).deploy(
+      await escrow.getAddress(),
+      await linkToken.getAddress(),
+      await mockOracle.getAddress()
+    );
+    // 6. Setup Escrow -> Oracle permissions & liquidity
+    await escrow.setOracle(await oracle.getAddress());
+    await owner.sendTransaction({ to: await escrow.getAddress(), value: ethers.parseEther("1") });
   });
 
-  it("Benchmark: Commit Policy (ZKP Data Hash)", async function () {
-    const locationHash = ethers.id("Austin, TX ZK Proof Coordinates");
-    const tx = await escrow.connect(farmer).commitPolicy(locationHash, 1);
-    const receipt = await tx.wait();
+  after(async function () {
+    if (globalThis.curve_bn128) await globalThis.curve_bn128.terminate();
+  });
+
+  it("Benchmark: Commit Policy (Poseidon location hash)", async function () {
+    const locationHash = toBytes32(await poseidonLocation(...farmU));
+    const receipt = await (await escrow.connect(farmer).commitPolicy(locationHash, 1)).wait();
     expect(receipt.status).to.equal(1);
   });
 
   it("Benchmark: Trigger Disaster (AI Oracle)", async function () {
-    const tx = await oracle.connect(owner).devTriggerDisaster(
-      29000000, 31500000, 96000000, 98500000
+    const receipt = await (await oracle.connect(owner).devTriggerDisaster(...zoneU)).wait();
+    expect(receipt.status).to.equal(1);
+  });
+
+  it("Benchmark: Claim Payout (on-chain Groth16 verification)", async function () {
+    const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+      {
+        min_lat: zoneU[0],
+        max_lat: zoneU[1],
+        min_lon: zoneU[2],
+        max_lon: zoneU[3],
+        location_hash: await poseidonLocation(...farmU),
+        farmer_lat: farmU[0],
+        farmer_lon: farmU[1],
+      },
+      path.join(__dirname, "../zk-circuit/LocationVerifier_js/LocationVerifier.wasm"),
+      path.join(__dirname, "../zk-circuit/circuit_final.zkey")
     );
-    const receipt = await tx.wait();
+    const cd = JSON.parse("[" + (await snarkjs.groth16.exportSolidityCallData(proof, publicSignals)) + "]");
+    const receipt = await (await escrow.connect(farmer).claimPayout(1, cd[0], cd[1], cd[2], cd[3])).wait();
     expect(receipt.status).to.equal(1);
   });
 });
