@@ -23,6 +23,7 @@ improvements.md
 
 # University Assignments
 da6_assignment/
+da8_assignment/
 *.zip
 .env
 
@@ -30,3 +31,6 @@ da6_assignment/
 api_out.json
 Screenshot*.png
 screenshot*.png
+
+# Academic Submissions
+academic_submissions/

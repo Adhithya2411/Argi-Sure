@@ -4,7 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy": "hardhat run scripts/deploy_local.js --network localhost",
+    "train:ml": "node scripts/train_ml_model.cjs",
+    "oracle:ai": "hardhat run scripts/oracle_node.cjs --network localhost",
+    "oracle:chainlink": "hardhat run scripts/chainlink_daemon.js --network localhost",
+    "trigger:disaster": "hardhat run scripts/trigger_disaster.js --network localhost",
+    "frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build"
   },
   "repository": {
     "type": "git",

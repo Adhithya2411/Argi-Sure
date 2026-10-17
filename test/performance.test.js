@@ -49,7 +49,7 @@ describe("Zk-AgriSure: Performance & Gas Benchmarking", function () {
 
   it("Benchmark: Commit Policy (Poseidon location hash)", async function () {
     const locationHash = toBytes32(await poseidonLocation(...farmU));
-    const receipt = await (await escrow.connect(farmer).commitPolicy(locationHash, 1)).wait();
+    const receipt = await (await escrow.connect(farmer).commitPolicy(locationHash, 1, { value: ethers.parseEther("0.01") })).wait();
     expect(receipt.status).to.equal(1);
   });
 

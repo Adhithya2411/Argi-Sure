@@ -80,14 +80,26 @@ contract AgriSureEscrow {
         return 0;
     }
 
+    function getPremiumAmount(Tier tier) public pure returns (uint256) {
+        if (tier == Tier.Basic) return 0.01 ether;
+        if (tier == Tier.Premium) return 0.05 ether;
+        if (tier == Tier.Enterprise) return 0.1 ether;
+        return 0;
+    }
+
     /**
      * @param locationHash Poseidon(lat_u, lon_u) computed client-side. The ZK
      *        proof at claim time must open this exact commitment.
+     * @param tier Insurance tier selection. Farmer must send the exact premium.
      */
-    function commitPolicy(bytes32 locationHash, Tier tier) external {
+    function commitPolicy(bytes32 locationHash, Tier tier) external payable {
         require(!isRegistered[msg.sender], "Farmer already registered");
         require(tier != Tier.None, "Invalid tier");
         require(locationHash != bytes32(0), "Invalid location hash");
+        
+        uint256 requiredPremium = getPremiumAmount(tier);
+        require(msg.value == requiredPremium, "Incorrect premium amount");
+
         policyHashes[msg.sender] = locationHash;
         farmerTiers[msg.sender] = tier;
         isRegistered[msg.sender] = true;
@@ -170,12 +182,13 @@ contract AgriSureEscrow {
         isRegistered[msg.sender] = false;
         policyHashes[msg.sender] = 0;
         farmerTiers[msg.sender] = Tier.None;
-        
-        // DEV FIX: Also clear claim history for the most recent disaster so the demo can be re-run
-        if (nextDisasterId > 1) {
-            hasClaimed[msg.sender][nextDisasterId - 1] = false;
-        }
-
         emit PolicyReset(msg.sender);
+    }
+
+    /**
+     * @notice DEV ONLY: clear claim history for specific disaster if needed during testing.
+     */
+    function devClearClaim(uint256 disasterId) external {
+        hasClaimed[msg.sender][disasterId] = false;
     }
 }

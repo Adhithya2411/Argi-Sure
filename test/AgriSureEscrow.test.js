@@ -137,9 +137,18 @@ describe("AgriSureEscrow", function () {
   });
 
   describe("Policy commitment", function () {
-    it("commits a Premium policy with a Poseidon location hash", async function () {
+    it("rejects policy commitment without required premium", async function () {
       const hash = await commitmentFor(DEMO_FARM);
-      await expect(escrow.connect(farmer).commitPolicy(hash, 2))
+      await expect(escrow.connect(farmer).commitPolicy(hash, 2, { value: 0 }))
+        .to.be.revertedWith("Incorrect premium amount");
+    });
+
+    it("commits a Premium policy with exact premium and Poseidon location hash", async function () {
+      const hash = await commitmentFor(DEMO_FARM);
+      const premium = await escrow.getPremiumAmount(2);
+      expect(premium).to.equal(ethers.parseEther("0.05"));
+
+      await expect(escrow.connect(farmer).commitPolicy(hash, 2, { value: premium }))
         .to.emit(escrow, "PolicyCommitted")
         .withArgs(farmer.address, hash);
       expect(await escrow.farmerTiers(farmer.address)).to.equal(2);
@@ -147,9 +156,9 @@ describe("AgriSureEscrow", function () {
     });
 
     it("rejects double registration, tier None and an empty hash", async function () {
-      await expect(escrow.connect(farmer).commitPolicy(ethers.id("x"), 1)).to.be.revertedWith("Farmer already registered");
+      await expect(escrow.connect(farmer).commitPolicy(ethers.id("x"), 1, { value: ethers.parseEther("0.01") })).to.be.revertedWith("Farmer already registered");
       await expect(escrow.connect(farmer2).commitPolicy(ethers.id("x"), 0)).to.be.revertedWith("Invalid tier");
-      await expect(escrow.connect(farmer2).commitPolicy(ethers.ZeroHash, 1)).to.be.revertedWith("Invalid location hash");
+      await expect(escrow.connect(farmer2).commitPolicy(ethers.ZeroHash, 1, { value: ethers.parseEther("0.01") })).to.be.revertedWith("Invalid location hash");
     });
   });
 
@@ -180,7 +189,7 @@ describe("AgriSureEscrow", function () {
     it("ANTI-SPOOFING: rejects a valid proof for a location other than the committed one", async function () {
       // farmer2 commits a farm OUTSIDE the zone (Dallas), then tries to prove a farm INSIDE it (Austin)
       const dallas = { lat: 32.7767, lon: -96.797 };
-      await escrow.connect(farmer2).commitPolicy(await commitmentFor(dallas), 1);
+      await escrow.connect(farmer2).commitPolicy(await commitmentFor(dallas), 1, { value: ethers.parseEther("0.01") });
 
       const spoof = await prove(DEMO_FARM);
       await expect(escrow.connect(farmer2).claimPayout(disasterId, spoof.a, spoof.b, spoof.c, spoof.input)).to.be.revertedWith(
@@ -206,7 +215,7 @@ describe("AgriSureEscrow", function () {
     });
 
     it("rejects a proof made against a different bounding box", async function () {
-      await escrow.connect(attacker).commitPolicy(await commitmentFor(DEMO_FARM), 1);
+      await escrow.connect(attacker).commitPolicy(await commitmentFor(DEMO_FARM), 1, { value: ethers.parseEther("0.01") });
       const widerZone = [toUintLat(28), ZONE_U[1], ZONE_U[2], ZONE_U[3]];
       const p = await prove(DEMO_FARM, widerZone);
       await expect(escrow.connect(attacker).claimPayout(disasterId, p.a, p.b, p.c, p.input)).to.be.revertedWith(
@@ -220,7 +229,7 @@ describe("AgriSureEscrow", function () {
       await expect(escrow.connect(farmer).devReset()).to.emit(escrow, "PolicyReset").withArgs(farmer.address);
       expect(await escrow.isRegistered(farmer.address)).to.be.false;
 
-      await escrow.connect(farmer).commitPolicy(await commitmentFor(DEMO_FARM), 3);
+      await escrow.connect(farmer).commitPolicy(await commitmentFor(DEMO_FARM), 3, { value: ethers.parseEther("0.1") });
       const p = await prove(DEMO_FARM);
       await expect(escrow.connect(farmer).claimPayout(disasterId, p.a, p.b, p.c, p.input)).to.be.revertedWith(
         "Already claimed payout"

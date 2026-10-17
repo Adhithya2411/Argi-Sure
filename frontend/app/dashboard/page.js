@@ -246,12 +246,13 @@ export default function Dashboard() {
       setContract(currentContract);
       setProvider(web3Provider);
 
+      const premium = await currentContract.getPremiumAmount(tierInt);
       const hashBytes = ethers.zeroPadValue(`0x${locationHash}`, 32);
 
       // Preflight against the node directly so a revert shows its real reason
-      await getReadEscrow().commitPolicy.staticCall(hashBytes, tierInt, { from: await signer.getAddress() });
+      await getReadEscrow().commitPolicy.staticCall(hashBytes, tierInt, { from: await signer.getAddress(), value: premium });
 
-      const tx = await currentContract.commitPolicy(hashBytes, tierInt);
+      const tx = await currentContract.commitPolicy(hashBytes, tierInt, { value: premium });
       setStatus('Transaction submitted. Waiting for confirmation...');
       
       await tx.wait();
@@ -444,9 +445,9 @@ export default function Dashboard() {
                   value={selectedTier}
                   onChange={(e) => setSelectedTier(e.target.value)}
                 >
-                  <option value="1">Basic (0.1 ETH Payout)</option>
-                  <option value="2">Premium (0.5 ETH Payout)</option>
-                  <option value="3">Enterprise (1.0 ETH Payout)</option>
+                  <option value="1">Basic — 0.01 ETH Premium (0.1 ETH Payout)</option>
+                  <option value="2">Premium — 0.05 ETH Premium (0.5 ETH Payout)</option>
+                  <option value="3">Enterprise — 0.10 ETH Premium (1.0 ETH Payout)</option>
                 </select>
               </div>
             </div>

@@ -30,19 +30,20 @@ async function main() {
 
     const data = response.data;
 
-    if (!data.disasterDetected) {
+    if (!data.disasterDetected || !data.events || data.events.length === 0) {
         console.log("AI Model Status: Safe. No active disasters detected.");
         return;
     }
 
-    console.log(`\n🚨 CRITICAL ALERT: AI Earthquake Probability: ${(data.probability * 100).toFixed(2)}%`);
-    console.log(`Disaster Metrics: Magnitude ${data.weather.magnitude} at ${data.weather.location}`);
+    const worstEvent = data.events[0];
+    console.log(`\n🚨 CRITICAL ALERT: AI Disaster Telemetry Detected!`);
+    console.log(`Disaster Metrics: Magnitude ${worstEvent.magnitude} (AI Predicted: ${worstEvent.predictedMagnitude ?? 'N/A'}) at ${worstEvent.location}`);
 
     // 2. Format Coordinates for Smart Contract
     // The dataset payload is GPS * 10^7 and may be NEGATIVE (southern / western
     // hemisphere). uint256 cannot hold negatives, so apply the same offsets the
     // frontend and circuit use.
-    const bb = data.boundingBox;
+    const bb = worstEvent.boundingBox;
     const box = [
         BigInt(Math.round(bb.minLat) + LAT_OFFSET),
         BigInt(Math.round(bb.maxLat) + LAT_OFFSET),
