@@ -11,6 +11,8 @@ export const ESCROW_ABI = [
   "function nextDisasterId() external view returns (uint256)",
   "function getPayoutAmount(uint8 tier) public pure returns (uint256)",
   "function getPremiumAmount(uint8 tier) public pure returns (uint256)",
+  "function policyHashes(address) external view returns (bytes32)",
+  "function farmerTiers(address) external view returns (uint8)",
   "function devReset() external",
   "function claimPayout(uint256 disasterId, uint256[2] calldata a, uint256[2][2] calldata b, uint256[2] calldata c, uint256[5] calldata publicInputs) external",
   "function hasClaimed(address, uint256) external view returns (bool)",
