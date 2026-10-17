@@ -8,6 +8,8 @@
     "test": "hardhat test",
     "node": "hardhat node",
     "deploy": "hardhat run scripts/deploy_local.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy_sepolia.js --network sepolia",
+    "verify:sepolia": "hardhat verify --network sepolia",
     "train:ml": "node scripts/train_ml_model.cjs",
     "train:ml:python": "python ml/train_disaster_model.py",
     "predict:ml": "python ml/predict_disaster.py",

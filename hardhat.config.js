@@ -18,9 +18,13 @@ const config = {
       chainId: 31337
     },
     sepolia: {
-      url: SEPOLIA_RPC_URL || "",
-      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : []
+      url: SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      chainId: 11155111
     }
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY || ""
   },
   gasReporter: {
     enabled: true,
