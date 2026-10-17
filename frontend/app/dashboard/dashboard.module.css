@@ -349,42 +349,70 @@
   }
 }
 
-/* Dual-Role Navigation Tabs */
-.tabNav {
-  display: flex;
-  gap: 0.5rem;
-  background: rgba(15, 23, 42, 0.7);
-  padding: 0.4rem;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  width: fit-content;
-  margin-bottom: 0.5rem;
+/* Location Selector & Coordinate Inputs */
+.locationSelectorContainer {
+  margin-bottom: 1.5rem;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  padding: 1.25rem;
 }
 
-.tabBtn {
+.locationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.locationModeToggle {
+  display: flex;
+  gap: 0.35rem;
+  background: rgba(2, 6, 23, 0.6);
+  padding: 0.25rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modeBtn {
   background: transparent;
   border: none;
   color: #94a3b8;
-  padding: 0.6rem 1.3rem;
-  border-radius: 12px;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.825rem;
   font-weight: 600;
-  font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.25s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  transition: all 0.2s ease;
 }
 
-.tabBtn:hover {
+.modeBtn:hover {
   color: #f8fafc;
-  background: rgba(255, 255, 255, 0.04);
 }
 
-.tabBtnActive {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+.modeBtnActive {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
   color: #ffffff;
-  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+}
+
+.coordsInputRow {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.subLabel {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Active Policy Card */
@@ -444,58 +472,4 @@
   font-size: 1rem;
   font-weight: 600;
   color: #f1f5f9;
-}
-
-/* Insurer Metrics Grid */
-.metricsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.2rem;
-  margin-bottom: 2rem;
-}
-
-.metricCard {
-  background: rgba(30, 41, 59, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px;
-  padding: 1.4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.metricValue {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #38bdf8;
-  letter-spacing: -0.5px;
-}
-
-.metricLabel {
-  font-size: 0.85rem;
-  color: #94a3b8;
-}
-
-/* Charts Gallery Drawer */
-.chartGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-}
-
-.chartCard {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 1.2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.chartCard img {
-  width: 100%;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
 }

@@ -39,8 +39,10 @@ const MapVisualizer = dynamic(() => import('./components/MapVisualizer'), {
 });
 
 export default function Dashboard() {
-  // Navigation State
-  const [activeTab, setActiveTab] = useState('farmer'); // 'farmer' | 'authority'
+  // Location Input Mode & Coordinates
+  const [locationInputMode, setLocationInputMode] = useState('address'); // 'address' | 'coords'
+  const [inputLat, setInputLat] = useState('');
+  const [inputLon, setInputLon] = useState('');
 
   // Web3 & Contract State
   const [account, setAccount] = useState('');
@@ -70,13 +72,20 @@ export default function Dashboard() {
   const [zkLogs, setZkLogs] = useState([]);
   const [networkEvents, setNetworkEvents] = useState([]);
   const [syncRequested, setSyncRequested] = useState(false);
-  const [showCharts, setShowCharts] = useState(false);
-  const [isTriggeringDisaster, setIsTriggeringDisaster] = useState(false);
+  const [isSyncingOracle, setIsSyncingOracle] = useState(false);
 
   // Geocoding State
   const [searchAddress, setSearchAddress] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const updateFarmPosition = (pos) => {
+    setFarmPosition(pos);
+    if (pos && pos.length === 2) {
+      setInputLat(pos[0].toFixed(6));
+      setInputLon(pos[1].toFixed(6));
+    }
+  };
 
   // 1. Web3 Authentication
   const connectWallet = async () => {
@@ -192,7 +201,7 @@ export default function Dashboard() {
           const cached = localStorage.getItem(`agrisure_farmer_${userAddress.toLowerCase()}`);
           if (cached) {
             const data = JSON.parse(cached);
-            if (data.farmPosition && !farmPosition) setFarmPosition(data.farmPosition);
+            if (data.farmPosition && !farmPosition) updateFarmPosition(data.farmPosition);
             if (data.farmerName && !farmerName) setFarmerName(data.farmerName);
             if (data.farmSize && !farmSize) setFarmSize(data.farmSize);
             if (data.cropType && !cropType) setCropType(data.cropType);
@@ -249,16 +258,33 @@ export default function Dashboard() {
       if (data && data.length > 0) {
         const lat = parseFloat(data[0].lat);
         const lon = parseFloat(data[0].lon);
-        setFarmPosition([lat, lon]);
+        updateFarmPosition([lat, lon]);
         toast.success("Address found! Map updated.");
       } else {
-        setError("Address not found. Please try a different query or drop the pin manually.");
+        setError("Address not found. Please try a different query or enter coordinates directly.");
       }
     } catch (err) {
       setError("Failed to geocode address.");
     } finally {
       setIsSearching(false);
     }
+  };
+
+  // Direct Coordinate Entry Handler
+  const handleApplyCoordinates = () => {
+    const lat = parseFloat(inputLat);
+    const lon = parseFloat(inputLon);
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      setError("Latitude must be a valid number between -90 and 90.");
+      return;
+    }
+    if (isNaN(lon) || lon < -180 || lon > 180) {
+      setError("Longitude must be a valid number between -180 and 180.");
+      return;
+    }
+    setError('');
+    updateFarmPosition([lat, lon]);
+    toast.success(`Coordinates applied: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
   };
 
   // Step 1: Policy Commitment (With Premium Payment)
@@ -326,71 +352,39 @@ export default function Dashboard() {
     }
   };
 
-  const handleDemoTriggerDisaster = async () => {
+  // Query & Sync Oracle Telemetry
+  const handleRequestOracleData = async () => {
     try {
-      setStatus('Requesting Disaster Data from Chainlink Network...');
+      setIsSyncingOracle(true);
+      setStatus('Querying decentralized oracle telemetry...');
+      
+      // 1. Fetch live USGS seismic telemetry
+      try {
+        const res = await fetch('/api/disaster-zone');
+        const data = await res.json();
+        if (data.disasterDetected && data.events && data.events.length > 0) {
+          const topEvent = data.events[0];
+          toast.success(`Live USGS Telemetry: M${topEvent.magnitude} near ${topEvent.location}`);
+        }
+      } catch (_) {}
+
+      // 2. Broadcast on-chain Chainlink data request
       const { signer } = await getWriteContext();
       const agriOracle = new ethers.Contract(AGRI_ORACLE_ADDRESS, [
         "function requestDisasterData() public returns (bytes32)"
       ], signer);
       
       const tx = await agriOracle.requestDisasterData();
-      setStatus('Transaction submitted. Waiting for Chainlink Node fulfillment...');
+      setStatus('Chainlink telemetry request broadcasted to blockchain...');
       await tx.wait();
-      toast.success("Chainlink request broadcasted to AI Oracle.");
-      setTimeout(() => setStatus(''), 4000);
+      toast.success("Oracle state synchronized on-chain!");
+      setIsSyncingOracle(false);
+      setStatus('');
+      if (account) checkRegistrationStatus(contract, account);
     } catch (err) {
       console.error(err);
-      setError("Failed to request Chainlink Data: " + (err.message || "Unknown error"));
-      setStatus('');
-    }
-  };
-
-  // Authority Trigger: Direct Austin Demo or Custom Bounding Box
-  const handleAuthorityTrigger = async (presetZone) => {
-    try {
-      if (!window.ethereum) return setError("Please connect MetaMask to broadcast oracle alerts.");
-      setIsTriggeringDisaster(true);
-      setStatus('Broadcasting Disaster Geometry through AgriSureOracle...');
-      const { signer } = await getWriteContext();
-      const agriOracle = new ethers.Contract(AGRI_ORACLE_ADDRESS, AGRI_ORACLE_ABI, signer);
-
-      const box = presetZone || [
-        toUintLat(30.0),
-        toUintLat(30.6),
-        toUintLon(-98.0),
-        toUintLon(-97.4)
-      ];
-
-      const tx = await agriOracle.devTriggerDisaster(...box);
-      await tx.wait();
-      toast.success("Disaster Zone declared and verified on-chain!");
-      setIsTriggeringDisaster(false);
-      setStatus('');
-      if (account) checkRegistrationStatus(contract, account);
-    } catch (err) {
-      setIsTriggeringDisaster(false);
-      setError("Failed to declare disaster: " + decodeError(err, escrowInterface));
-      setStatus('');
-    }
-  };
-
-  // Authority Action: Fund Escrow Pool
-  const handleFundEscrow = async () => {
-    try {
-      if (!window.ethereum) return setError("Please connect MetaMask to fund escrow.");
-      setStatus('Funding Escrow Pool with 2.0 ETH...');
-      const { signer } = await getWriteContext();
-      const tx = await signer.sendTransaction({
-        to: ESCROW_ADDRESS,
-        value: ethers.parseEther("2.0")
-      });
-      await tx.wait();
-      toast.success("Funded Escrow with 2.0 ETH!");
-      setStatus('');
-      if (account) checkRegistrationStatus(contract, account);
-    } catch (err) {
-      setError("Funding failed: " + err.message);
+      setIsSyncingOracle(false);
+      setError("Failed to sync oracle data: " + (err.message || "Unknown error"));
       setStatus('');
     }
   };
@@ -478,20 +472,6 @@ export default function Dashboard() {
         <Link href="/" className={styles.logo}>Zk-AgriSure Protocol</Link>
         {account ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button 
-              onClick={async () => {
-                const { escrow } = await getWriteContext();
-                const tx = await escrow.devReset();
-                await tx.wait();
-                if (typeof window !== 'undefined') {
-                  localStorage.removeItem(`agrisure_farmer_${account.toLowerCase()}`);
-                }
-                window.location.reload();
-              }}
-              className="text-xs text-red-500 hover:text-red-400 transition-colors bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20"
-            >
-              [Dev] Reset State
-            </button>
             <div className={styles.walletBadge}>
               {account.substring(0, 6)}...{account.substring(account.length - 4)}
             </div>
@@ -504,23 +484,7 @@ export default function Dashboard() {
       </header>
 
       <main className={styles.main}>
-        {/* Dual-Role Navigation Switcher */}
-        <div className={styles.tabNav}>
-          <button 
-            className={`${styles.tabBtn} ${activeTab === 'farmer' ? styles.tabBtnActive : ''}`}
-            onClick={() => setActiveTab('farmer')}
-          >
-            🌾 Farmer Portal
-          </button>
-          <button 
-            className={`${styles.tabBtn} ${activeTab === 'authority' ? styles.tabBtnActive : ''}`}
-            onClick={() => setActiveTab('authority')}
-          >
-            🏛️ Insurer & Authority Portal
-          </button>
-        </div>
-
-        {!account && activeTab === 'farmer' ? (
+        {!account ? (
           <div className={styles.authContainer}>
             <h1 className={styles.title}>Decentralized Crop Insurance</h1>
             <p className={styles.subtitle}>Connect your Web3 wallet to manage private parametric policies and verify zero-knowledge claims.</p>
@@ -528,10 +492,7 @@ export default function Dashboard() {
               Connect MetaMask
             </button>
           </div>
-        ) : activeTab === 'farmer' ? (
-          /* ======================================================== */
-          /*                    FARMER PORTAL VIEW                    */
-          /* ======================================================== */
+        ) : (
           <>
             {/* Active Policy Card (Shown once committed) */}
             {isRegistered && (
@@ -573,7 +534,7 @@ export default function Dashboard() {
 
                 {farmPosition && (
                   <p style={{ marginTop: '1rem', color: '#38bdf8', fontSize: '0.8rem' }}>
-                    🔒 Edge Coordinates Saved Locally: {farmPosition[0].toFixed(4)}°N, {farmPosition[1].toFixed(4)}°W (Never published to blockchain)
+                    🔒 Edge Coordinates Saved Locally: {farmPosition[0].toFixed(6)}°N, {farmPosition[1].toFixed(6)}°W (Never published to blockchain)
                   </p>
                 )}
               </div>
@@ -587,7 +548,7 @@ export default function Dashboard() {
                 </div>
                 
                 <div className={styles.infoBox}>
-                  Fill out your farm details and drop a pin on the map. We will compute a cryptographic <b>Poseidon Hash</b> locally in your browser to anchor your location on-chain with an initial premium.
+                  Fill out your farm details and specify your location. We will compute a cryptographic <b>Poseidon Hash</b> locally in your browser to anchor your location on-chain with an initial premium payment.
                 </div>
 
                 <div className={styles.formGrid}>
@@ -635,35 +596,94 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className={styles.searchBarContainer}>
-                  <input 
-                    type="text" 
-                    className={styles.input} 
-                    placeholder="Search farm address (e.g. Austin, Texas)" 
-                    value={searchAddress}
-                    onChange={(e) => setSearchAddress(e.target.value)}
-                    style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddressSearch()}
-                  />
-                  <button 
-                    className={styles.button} 
-                    style={{ width: 'auto', borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
-                    onClick={handleAddressSearch}
-                    disabled={isSearching}
-                  >
-                    {isSearching ? 'Searching...' : 'Search'}
-                  </button>
+                {/* Geospatial Location Input: Address Search OR Exact Coordinates */}
+                <div className={styles.locationSelectorContainer}>
+                  <div className={styles.locationHeader}>
+                    <label className={styles.label} style={{ margin: 0 }}>Farm Geospatial Location</label>
+                    <div className={styles.locationModeToggle}>
+                      <button 
+                        type="button"
+                        className={`${styles.modeBtn} ${locationInputMode === 'address' ? styles.modeBtnActive : ''}`}
+                        onClick={() => setLocationInputMode('address')}
+                      >
+                        🔍 Search Place Name
+                      </button>
+                      <button 
+                        type="button"
+                        className={`${styles.modeBtn} ${locationInputMode === 'coords' ? styles.modeBtnActive : ''}`}
+                        onClick={() => setLocationInputMode('coords')}
+                      >
+                        🌐 Enter Exact Lat & Lon
+                      </button>
+                    </div>
+                  </div>
+
+                  {locationInputMode === 'address' ? (
+                    <div className={styles.searchBarContainer} style={{ marginBottom: 0 }}>
+                      <input 
+                        type="text" 
+                        className={styles.input} 
+                        placeholder="Search city, village, or farm address (e.g. Austin, Texas or Khuzdar)" 
+                        value={searchAddress}
+                        onChange={(e) => setSearchAddress(e.target.value)}
+                        style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddressSearch()}
+                      />
+                      <button 
+                        type="button"
+                        className={styles.button} 
+                        style={{ width: 'auto', borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+                        onClick={handleAddressSearch}
+                        disabled={isSearching}
+                      >
+                        {isSearching ? 'Searching...' : 'Search'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={styles.coordsInputRow}>
+                      <div style={{ flex: 1, minWidth: '160px' }}>
+                        <label className={styles.subLabel}>Latitude (-90° to +90°)</label>
+                        <input 
+                          type="number" 
+                          step="any"
+                          className={styles.input} 
+                          placeholder="e.g. 30.2672" 
+                          value={inputLat}
+                          onChange={(e) => setInputLat(e.target.value)}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: '160px' }}>
+                        <label className={styles.subLabel}>Longitude (-180° to +180°)</label>
+                        <input 
+                          type="number" 
+                          step="any"
+                          className={styles.input} 
+                          placeholder="e.g. -97.7431" 
+                          value={inputLon}
+                          onChange={(e) => setInputLon(e.target.value)}
+                        />
+                      </div>
+                      <button 
+                        type="button"
+                        className={styles.button} 
+                        style={{ width: 'auto', padding: '1rem 1.6rem', whiteSpace: 'nowrap' }}
+                        onClick={handleApplyCoordinates}
+                      >
+                        📍 Set Pin on Map
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <MapVisualizer 
                   interactive={true} 
                   position={farmPosition} 
-                  setPosition={setFarmPosition} 
+                  setPosition={updateFarmPosition} 
                 />
 
                 {farmPosition && (
                   <p style={{ marginTop: '1rem', color: '#94a3b8' }}>
-                    Selected Coordinates: {farmPosition[0].toFixed(4)}, {farmPosition[1].toFixed(4)} (These will be hashed and never revealed)
+                    Selected Farm Coordinates: <b>{farmPosition[0].toFixed(6)}°N, {farmPosition[1].toFixed(6)}°E/W</b> (These will be hashed with Poseidon and never revealed)
                   </p>
                 )}
 
@@ -685,16 +705,22 @@ export default function Dashboard() {
                   </div>
                   
                   <div className={styles.infoBox}>
-                    Decentralized Oracles continuously monitor weather sensors and push verified macro disaster geometries onto the blockchain.
+                    Decentralized Oracles continuously monitor global seismic and weather telemetry from the USGS and Chainlink oracle networks. When macro disaster thresholds are breached, verified bounding boxes are committed on-chain.
                   </div>
 
-                  <div className="mt-8 text-center pt-8 border-t border-gray-800">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '1.5rem 0', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span style={{ height: '10px', width: '10px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
+                      <span style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>Chainlink & USGS Telemetry: <b>Active Monitoring</b></span>
+                    </div>
+
                     <button 
-                      onClick={handleDemoTriggerDisaster}
+                      onClick={handleRequestOracleData}
                       className={styles.button}
-                      style={{ marginBottom: '1.5rem' }}
+                      style={{ width: 'auto', padding: '0.7rem 1.4rem', fontSize: '0.875rem' }}
+                      disabled={isSyncingOracle}
                     >
-                      Request Chainlink Data Sync
+                      {isSyncingOracle ? 'Querying Oracles...' : '📡 Sync Oracle Telemetry'}
                     </button>
                   </div>
 
@@ -705,23 +731,32 @@ export default function Dashboard() {
                         position={farmPosition} 
                         disasterZone={activeDisaster}
                       />
-                      <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <p style={{ margin: 0, color: '#f8fafc', fontSize: '0.85rem' }}>
-                          Active Red Zone: [{activeDisaster.minLat}° to {activeDisaster.maxLat}°N] × [{activeDisaster.minLon}° to {activeDisaster.maxLon}°W]
-                        </p>
-                        {isFarmInDisaster ? (
-                          <span className={styles.badgeClaimed} style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)' }}>
-                            🚨 Farm In Disaster Zone (Eligible)
-                          </span>
-                        ) : (
-                          <span className={styles.badgeProtected}>
-                            🛡️ Farm Outside Disaster Zone
-                          </span>
-                        )}
+                      <div style={{ marginTop: '1.25rem', padding: '1.2rem', background: 'rgba(15, 23, 42, 0.6)', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div>
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Verified On-Chain Disaster Zone</div>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#f8fafc', marginTop: '0.2rem' }}>
+                            [{activeDisaster.minLat.toFixed(4)}°N, {activeDisaster.minLon.toFixed(4)}°E] to [{activeDisaster.maxLat.toFixed(4)}°N, {activeDisaster.maxLon.toFixed(4)}°E]
+                          </div>
+                        </div>
+                        <div>
+                          {isFarmInDisaster ? (
+                            <span className={styles.badgeClaimed} style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)' }}>
+                              🚨 Farm In Disaster Zone (Eligible)
+                            </span>
+                          ) : (
+                            <span className={styles.badgeProtected}>
+                              🛡️ Farm Outside Disaster Zone
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </>
                   ) : (
-                    <p style={{ color: '#94a3b8' }}>No active disaster detected on-chain. Regional weather status is normal.</p>
+                    <div style={{ padding: '2rem', textAlign: 'center', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                      <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.95rem' }}>
+                        ✅ Regional Status Normal. No qualifying disaster thresholds currently breached.
+                      </p>
+                    </div>
                   )}
                 </div>
 
@@ -763,109 +798,6 @@ export default function Dashboard() {
               </>
             )}
           </>
-        ) : (
-          /* ======================================================== */
-          /*              INSURER & AUTHORITY PORTAL VIEW             */
-          /* ======================================================== */
-          <div className={styles.glassCard}>
-            <div className={styles.stepHeader}>
-              <div className={styles.stepNumber}>🏛️</div>
-              <h2 className={styles.stepTitle}>Institutional Authority & Oracle Control Panel</h2>
-            </div>
-
-            <div className={styles.infoBox}>
-              Manage the decentralized insurance liquidity pool, inspect verified USGS/ML disaster models, and broadcast authenticated weather alerts to the blockchain.
-            </div>
-
-            {/* Metrics Row */}
-            <div className={styles.metricsGrid}>
-              <div className={styles.metricCard}>
-                <div className={styles.metricValue}>{escrowBalance} ETH</div>
-                <div className={styles.metricLabel}>Escrow Pool Liquidity</div>
-              </div>
-              <div className={styles.metricCard}>
-                <div className={styles.metricValue}>96.80%</div>
-                <div className={styles.metricLabel}>AI Detection Accuracy</div>
-              </div>
-              <div className={styles.metricCard}>
-                <div className={styles.metricValue}>0.9888</div>
-                <div className={styles.metricLabel}>Model AUC-ROC Score</div>
-              </div>
-              <div className={styles.metricCard}>
-                <div className={styles.metricValue}>{activeDisaster ? "Active Zone" : "Clear"}</div>
-                <div className={styles.metricLabel}>On-Chain Disaster Status</div>
-              </div>
-            </div>
-
-            {/* AI Model Audit Section */}
-            <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'rgba(15, 23, 42, 0.6)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h4 style={{ margin: 0, fontSize: '1.1rem' }}>🧠 Machine Learning Disaster Classifier Audit</h4>
-                  <p style={{ margin: '0.2rem 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>
-                    Trained on 10,165 USGS disaster records using Random Forest & Gradient Boosting Ensembles.
-                  </p>
-                </div>
-                <button 
-                  className={styles.button} 
-                  style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                  onClick={() => setShowCharts(!showCharts)}
-                >
-                  {showCharts ? "Hide Evaluation Charts" : "View AI Evaluation Charts"}
-                </button>
-              </div>
-
-              {showCharts && (
-                <div className={styles.chartGrid}>
-                  <div className={styles.chartCard}>
-                    <h5 style={{ margin: 0, color: '#38bdf8' }}>Confusion Matrix</h5>
-                    <img src="/charts/confusion_matrix.png" alt="Confusion Matrix" />
-                  </div>
-                  <div className={styles.chartCard}>
-                    <h5 style={{ margin: 0, color: '#38bdf8' }}>ROC Curve (AUC: 0.989)</h5>
-                    <img src="/charts/roc_curve.png" alt="ROC Curve" />
-                  </div>
-                  <div className={styles.chartCard}>
-                    <h5 style={{ margin: 0, color: '#38bdf8' }}>Feature Importance</h5>
-                    <img src="/charts/feature_importance.png" alt="Feature Importance" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Oracle Controls */}
-            <h4 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.1rem' }}>⚡ Oracle Simulation & Protocol Actions</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-              <button 
-                className={styles.button}
-                onClick={() => handleAuthorityTrigger([toUintLat(30.0), toUintLat(30.6), toUintLon(-98.0), toUintLon(-97.4)])}
-                disabled={isTriggeringDisaster}
-              >
-                🚨 Trigger Austin Red Zone (30°N, -97.7°W)
-              </button>
-
-              <button 
-                className={styles.button}
-                style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}
-                onClick={() => handleAuthorityTrigger([toUintLat(32.5), toUintLat(33.1), toUintLon(-97.2), toUintLon(-96.5)])}
-                disabled={isTriggeringDisaster}
-              >
-                🚨 Trigger Dallas North Zone (32.8°N, -96.8°W)
-              </button>
-
-              <button 
-                className={styles.button}
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}
-                onClick={handleFundEscrow}
-              >
-                💰 Fund Escrow Pool (+2.0 ETH)
-              </button>
-            </div>
-
-            <div style={{ marginTop: '2rem' }}>
-              <BlockchainExplorer events={networkEvents} />
-            </div>
-          </div>
         )}
 
         {status && (
