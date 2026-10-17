@@ -117,14 +117,20 @@ export async function GET() {
             }
         }
 
-        // Highest-risk first: model prediction when available, observed magnitude otherwise
-        events.sort((a, b) => (b.predictedMagnitude ?? b.magnitude) - (a.predictedMagnitude ?? a.magnitude) || b.magnitude - a.magnitude);
+        let mlMetrics = null;
+        try {
+            const metricsPath = path.join(process.cwd(), '../ml/evaluation_charts/model_metrics.json');
+            if (fs.existsSync(metricsPath)) {
+                mlMetrics = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
+            }
+        } catch (_) {}
 
         return NextResponse.json({
             disasterDetected: events.length > 0,
             generatedAt: new Date().toISOString(),
             source,
-            criteria: { minMagnitude: MIN_MAGNITUDE, radiusDeg: RADIUS_DEG, model: net ? 'brain.js' : 'unavailable' },
+            criteria: { minMagnitude: MIN_MAGNITUDE, radiusDeg: RADIUS_DEG, model: net ? 'brain.js + Scikit-Learn Ensemble' : 'unavailable' },
+            mlMetrics,
             count: events.length,
             events,
         });

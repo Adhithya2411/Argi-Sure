@@ -34,3 +34,11 @@ screenshot*.png
 
 # Academic Submissions
 academic_submissions/
+
+# Temporary doc and report generation helpers
+generate_docx*.py
+check_*.py
+read_docx.py
+read_pdf.py
+extract_ppt_images.py
+pdf_output.txt
