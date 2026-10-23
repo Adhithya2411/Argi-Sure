@@ -1,0 +1,11 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployer": "0x826B6797452390b61F7426060593Df54fba2bC5a",
+  "Groth16Verifier": "0x1dCEbE56A7E7CE55Ba42494F723Fd082d6b3E036",
+  "AgriSureEscrow": "0xeC99C485edb9EABb9D7C1Ad5d77882c7d066Be39",
+  "AgriSureOracle": "0x40Ed7b246A48b5C68792dE5a6ee0eb46D658179D",
+  "ChainlinkLinkToken": "0x779877A7B0D9E8603169DdbD7836e478b4624789",
+  "ChainlinkOracle": "0x6090149792dAAeE9D1D568c9f9a6F6B46AA29eFD",
+  "deployedAt": "2026-10-23T07:41:27.205Z"
+}

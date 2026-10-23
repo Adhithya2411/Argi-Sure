@@ -24,6 +24,11 @@ improvements.md
 # University Assignments
 da6_assignment/
 da8_assignment/
+da9_assignment/
+da9_latex/
+*da9*
+*DA9*
+*report3*
 *.zip
 .env
 
@@ -31,6 +36,7 @@ da8_assignment/
 api_out.json
 Screenshot*.png
 screenshot*.png
+frontend/public/paper_images/
 
 # Academic Submissions
 academic_submissions/
