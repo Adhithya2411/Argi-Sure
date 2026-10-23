@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Rectangle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -17,20 +17,19 @@ function MapUpdater({ position, bounds }) {
   useEffect(() => {
     let isActive = true;
     const timer = setTimeout(() => {
-      // Check if map is still valid and not destroyed before calling methods
-      if (isActive && map && map._loaded) {
+      if (isActive && map) {
         try {
           map.invalidateSize();
-          if (bounds) {
-            map.fitBounds(bounds, { padding: [20, 20] });
-          } else if (position) {
-            map.flyTo(position, 13);
+          if (bounds && bounds[0] && bounds[1]) {
+            map.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 });
+          } else if (position && position[0] !== undefined) {
+            map.flyTo(position, 12);
           }
         } catch (e) {
-          console.warn("Leaflet map update safely caught:", e);
+          console.warn("Leaflet map update caught:", e);
         }
       }
-    }, 100);
+    }, 150);
 
     return () => {
       isActive = false;
@@ -60,13 +59,13 @@ export default function MapVisualizer({
   setPosition, 
   disasterZone = null 
 }) {
-  const defaultCenter = [12.9716, 77.5946]; // Bangalore roughly
-  const currentCenter = position || defaultCenter;
-
+  const defaultCenter = [12.9716, 77.5946];
   const bounds = disasterZone ? [
     [disasterZone.minLat, disasterZone.minLon],
     [disasterZone.maxLat, disasterZone.maxLon]
   ] : null;
+
+  const currentCenter = position || (bounds ? [(disasterZone.minLat + disasterZone.maxLat) / 2, (disasterZone.minLon + disasterZone.maxLon) / 2] : defaultCenter);
 
   return (
     <div style={{ 
@@ -106,7 +105,7 @@ export default function MapVisualizer({
               color: '#ef4444', 
               weight: 3, 
               fillColor: '#ef4444', 
-              fillOpacity: 0.3,
+              fillOpacity: 0.35,
               className: 'radar-polygon' 
             }} 
           />

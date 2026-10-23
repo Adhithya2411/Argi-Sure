@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import dynamic from 'next/dynamic';
-import { generateProof, hashLocation, toUintLat, toUintLon, fromUintLat, fromUintLon } from '../../utils/zkp';
-import { ESCROW_ABI, ESCROW_ADDRESS, LOCAL_ORACLE_ABI, LOCAL_ORACLE_ADDRESS, AGRI_ORACLE_ADDRESS, AGRI_ORACLE_ABI } from '../../utils/contract';
+import { generateProof, hashLocation, fromUintLat, fromUintLon } from '../../utils/zkp';
+import { ESCROW_ABI, ESCROW_ADDRESS } from '../../utils/contract';
 import { getReadProvider, ensureWalletNetwork, syncWalletWithNode, decodeError } from '../../utils/chain';
 
 const escrowInterface = new ethers.Interface(ESCROW_ABI);
@@ -71,13 +71,27 @@ export default function Dashboard() {
   const [zkComplete, setZkComplete] = useState(false);
   const [zkLogs, setZkLogs] = useState([]);
   const [networkEvents, setNetworkEvents] = useState([]);
-  const [syncRequested, setSyncRequested] = useState(false);
   const [isSyncingOracle, setIsSyncingOracle] = useState(false);
 
   // Geocoding State
   const [searchAddress, setSearchAddress] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accountBalance, setAccountBalance] = useState(null);
+  const [currentChainId, setCurrentChainId] = useState(null);
+
+  const refreshAccountDetails = async (userAddr, web3Provider) => {
+    try {
+      const p = web3Provider || (window.ethereum ? new ethers.BrowserProvider(window.ethereum) : null);
+      if (!p || !userAddr) return;
+      const [bal, net] = await Promise.all([
+        p.getBalance(userAddr),
+        p.getNetwork()
+      ]);
+      setAccountBalance(ethers.formatEther(bal));
+      setCurrentChainId(Number(net.chainId));
+    } catch (_) {}
+  };
 
   const updateFarmPosition = (pos) => {
     setFarmPosition(pos);
@@ -102,8 +116,8 @@ export default function Dashboard() {
       setAccount(accounts[0]);
       setProvider(web3Provider);
       setContract(escrowContract);
-      
-      checkRegistrationStatus(escrowContract, accounts[0]);
+      await refreshAccountDetails(accounts[0], web3Provider);
+      await checkRegistrationStatus(escrowContract, accounts[0]);
     } catch (err) {
       setError(err.message);
     }
@@ -113,7 +127,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (contract) {
       const eventSource = getReadEscrow();
-      const handlePolicyCommitted = (farmer, locationHash, event) => {
+      const handlePolicyCommitted = (farmer, locationHash) => {
         toast.success(`Policy Committed for ${farmer.substring(0,6)}...`);
         setNetworkEvents(prev => [{
           type: 'PolicyCommitted',
@@ -128,7 +142,7 @@ export default function Dashboard() {
         toast.success(`Payout Claimed! ${ethers.formatEther(amount)} ETH`);
         setNetworkEvents(prev => [{
           type: 'PayoutClaimed (ZK-Verified)',
-          hash: event.log.transactionHash,
+          hash: event?.log?.transactionHash || '0x...',
           farmer: farmer,
           amount: ethers.formatEther(amount),
           timestamp: new Date().toLocaleTimeString()
@@ -136,11 +150,10 @@ export default function Dashboard() {
         if (account) checkRegistrationStatus(contract, account);
       };
 
-      const handleDisasterTriggered = (minLat, maxLat, minLon, maxLon, event) => {
+      const handleDisasterTriggered = (minLat, maxLat, minLon, maxLon) => {
         toast.error('Oracle Disaster Triggered On-Chain!', { duration: 5000 });
         if (account) {
           checkRegistrationStatus(contract, account);
-          setSyncRequested(true);
         }
       };
 
@@ -164,7 +177,7 @@ export default function Dashboard() {
             setAccount(accounts[0]);
             setProvider(web3Provider);
             setContract(escrow);
-            checkRegistrationStatus(escrow, accounts[0]);
+            await checkRegistrationStatus(escrow, accounts[0]);
           } catch (e) {
             setError(e.message);
           }
@@ -196,12 +209,16 @@ export default function Dashboard() {
       setIsRegistered(registered);
 
       // Restore client-side metadata from localStorage for seamless persistence
+      let cachedPosition = farmPosition;
       if (typeof window !== 'undefined') {
         try {
           const cached = localStorage.getItem(`agrisure_farmer_${userAddress.toLowerCase()}`);
           if (cached) {
             const data = JSON.parse(cached);
-            if (data.farmPosition && !farmPosition) updateFarmPosition(data.farmPosition);
+            if (data.farmPosition && !farmPosition) {
+              updateFarmPosition(data.farmPosition);
+              cachedPosition = data.farmPosition;
+            }
             if (data.farmerName && !farmerName) setFarmerName(data.farmerName);
             if (data.farmSize && !farmSize) setFarmSize(data.farmSize);
             if (data.cropType && !cropType) setCropType(data.cropType);
@@ -221,20 +238,39 @@ export default function Dashboard() {
       
       const nextId = await escrowContract.nextDisasterId();
       if (nextId > 0) {
-        const currentDisasterId = Number(nextId) - 1;
-        const claimed = await escrowContract.hasClaimed(userAddress, currentDisasterId);
-        setHasClaimed(claimed);
-        
-        const disaster = await escrowContract.disasters(currentDisasterId);
-        if (disaster.isActive) {
-          setActiveDisasterId(currentDisasterId);
-          setActiveDisaster({
-            minLat: fromUintLat(disaster.minLat),
-            maxLat: fromUintLat(disaster.maxLat),
-            minLon: fromUintLon(disaster.minLon),
-            maxLon: fromUintLon(disaster.maxLon),
-          });
-          setSyncRequested(true);
+        let matchedDisaster = null;
+        let matchedId = null;
+
+        for (let i = Number(nextId) - 1; i >= 1; i--) {
+          try {
+            const d = await escrowContract.disasters(i);
+            if (d.isActive) {
+              const minLatF = fromUintLat(d.minLat);
+              const maxLatF = fromUintLat(d.maxLat);
+              const minLonF = fromUintLon(d.minLon);
+              const maxLonF = fromUintLon(d.maxLon);
+              const zone = { minLat: minLatF, maxLat: maxLatF, minLon: minLonF, maxLon: maxLonF };
+
+              const posToCheck = cachedPosition || farmPosition;
+              if (posToCheck &&
+                  posToCheck[0] >= minLatF && posToCheck[0] <= maxLatF &&
+                  posToCheck[1] >= minLonF && posToCheck[1] <= maxLonF) {
+                matchedDisaster = zone;
+                matchedId = i;
+                break;
+              } else if (!matchedDisaster) {
+                matchedDisaster = zone;
+                matchedId = i;
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (matchedDisaster) {
+          setActiveDisasterId(matchedId);
+          setActiveDisaster(matchedDisaster);
+          const claimed = await escrowContract.hasClaimed(userAddress, matchedId);
+          setHasClaimed(claimed);
         }
       }
 
@@ -287,13 +323,13 @@ export default function Dashboard() {
     toast.success(`Coordinates applied: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
   };
 
-  // Step 1: Policy Commitment (With Premium Payment)
+  // Step 1: Policy Commitment (With Premium Payment) + Dynamic Oracle Synchronization
   const handleCommitPolicy = async () => {
-    if (!farmPosition) return setError("Please drop a pin on the map first.");
+    if (!farmPosition) return setError("Please specify or drop a pin on your farm location.");
     if (!farmerName || !farmSize || !cropType) return setError("Please fill out all farm details.");
     if (isSubmitting) return;
     
-    setStatus('Generating Poseidon Hash locally...');
+    setStatus('Generating Poseidon Hash locally in browser...');
     setError('');
     setIsSubmitting(true);
     
@@ -302,7 +338,7 @@ export default function Dashboard() {
       const lon = farmPosition[1];
       const locationHash = await hashLocation(lat, lon);
       
-      setStatus(`Hash generated: ${locationHash.substring(0, 15)}... Awaiting wallet signature.`);
+      setStatus(`Poseidon Hash generated: 0x${locationHash.substring(0, 12)}... Awaiting wallet signature.`);
       
       const tierInt = parseInt(selectedTier, 10);
       const { web3Provider, signer, escrow: currentContract } = await getWriteContext();
@@ -310,20 +346,23 @@ export default function Dashboard() {
       setProvider(web3Provider);
 
       const premium = await currentContract.getPremiumAmount(tierInt);
+      const userAddr = await signer.getAddress();
+      const balance = await web3Provider.getBalance(userAddr);
+      if (balance < premium) {
+        throw new Error(`Insufficient funds: Your connected account (${userAddr.substring(0, 6)}...${userAddr.substring(userAddr.length - 4)}) has ${Number(ethers.formatEther(balance)).toFixed(4)} Sepolia ETH, but Tier ${tierInt} requires a premium of ${ethers.formatEther(premium)} ETH. Please choose Tier 1 (0.01 ETH) or fund your wallet with Sepolia ETH.`);
+      }
       const hashBytes = ethers.zeroPadValue(`0x${locationHash}`, 32);
 
       // Preflight check
-      await getReadEscrow().commitPolicy.staticCall(hashBytes, tierInt, { from: await signer.getAddress(), value: premium });
+      await getReadEscrow().commitPolicy.staticCall(hashBytes, tierInt, { from: userAddr, value: premium });
 
       const tx = await currentContract.commitPolicy(hashBytes, tierInt, { value: premium });
-      setStatus('Transaction submitted. Waiting for confirmation...');
+      setStatus('Policy commit transaction submitted. Waiting for confirmation on Sepolia...');
       
       await tx.wait();
-      setStatus('Policy Committed successfully!');
       
       // Save metadata locally to maintain state on page reloads
       if (typeof window !== 'undefined') {
-        const userAddr = await signer.getAddress();
         const payload = {
           account: userAddr.toLowerCase(),
           farmerName,
@@ -336,10 +375,30 @@ export default function Dashboard() {
         localStorage.setItem(`agrisure_farmer_${userAddr.toLowerCase()}`, JSON.stringify(payload));
       }
 
+      setStatus('Policy committed on-chain! Oracle verifying regional disaster telemetry...');
+
+      // Dynamic Oracle Sync: ensure the verified disaster bounding box covering this farm exists on-chain
+      try {
+        const oracleRes = await fetch('/api/oracle-trigger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat, lon })
+        });
+        const oracleData = await oracleRes.json();
+        if (oracleData.success && oracleData.boundingBox) {
+          setActiveDisaster(oracleData.boundingBox);
+          if (oracleData.disasterId) setActiveDisasterId(oracleData.disasterId);
+        }
+      } catch (oracleErr) {
+        console.warn("Oracle dynamic sync note:", oracleErr);
+      }
+
       setIsRegistered(true);
       setPolicyHash(`0x${locationHash}`);
+      await checkRegistrationStatus(currentContract, userAddr);
       setIsSubmitting(false);
-      toast.success("Policy anchored on-chain with Poseidon hash!");
+      setStatus('');
+      toast.success("Policy committed & disaster telemetry synced dynamically on-chain!");
     } catch (err) {
       setIsSubmitting(false);
       console.error(err);
@@ -352,39 +411,29 @@ export default function Dashboard() {
     }
   };
 
-  // Query & Sync Oracle Telemetry
-  const handleRequestOracleData = async () => {
+  // Reset Policy (Allows developer/user to test from Step 1 repeatedly without changing accounts)
+  const handleResetPolicy = async () => {
     try {
-      setIsSyncingOracle(true);
-      setStatus('Querying decentralized oracle telemetry...');
-      
-      // 1. Fetch live USGS seismic telemetry
-      try {
-        const res = await fetch('/api/disaster-zone');
-        const data = await res.json();
-        if (data.disasterDetected && data.events && data.events.length > 0) {
-          const topEvent = data.events[0];
-          toast.success(`Live USGS Telemetry: M${topEvent.magnitude} near ${topEvent.location}`);
-        }
-      } catch (_) {}
-
-      // 2. Broadcast on-chain Chainlink data request
-      const { signer } = await getWriteContext();
-      const agriOracle = new ethers.Contract(AGRI_ORACLE_ADDRESS, [
-        "function requestDisasterData() public returns (bytes32)"
-      ], signer);
-      
-      const tx = await agriOracle.requestDisasterData();
-      setStatus('Chainlink telemetry request broadcasted to blockchain...');
+      setStatus("Resetting farmer registration on Sepolia smart contract...");
+      setError('');
+      const { escrow, signer } = await getWriteContext();
+      const userAddr = await signer.getAddress();
+      const tx = await escrow.devResetFarmer();
       await tx.wait();
-      toast.success("Oracle state synchronized on-chain!");
-      setIsSyncingOracle(false);
-      setStatus('');
-      if (account) checkRegistrationStatus(contract, account);
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`agrisure_farmer_${userAddr.toLowerCase()}`);
+      }
+      setIsRegistered(false);
+      setPolicyHash('');
+      setHasClaimed(false);
+      setActiveDisaster(null);
+      setActiveDisasterId(null);
+      setStatus("Policy reset! You can now commit a new policy in Step 1.");
+      toast.success("Policy reset successfully!");
     } catch (err) {
       console.error(err);
-      setIsSyncingOracle(false);
-      setError("Failed to sync oracle data: " + (err.message || "Unknown error"));
+      setError("Failed to reset policy: " + decodeError(err, escrowInterface));
       setStatus('');
     }
   };
@@ -409,7 +458,7 @@ export default function Dashboard() {
         maxLon: activeDisaster.maxLon.toString(),
       };
 
-      const { proof, publicSignals, calldata } = await generateProof(
+      const { calldata } = await generateProof(
         dZone,
         { lat, lon },
         (msg) => setZkLogs(prev => [...prev, msg])
@@ -471,7 +520,32 @@ export default function Dashboard() {
       <header className={styles.header}>
         <Link href="/" className={styles.logo}>Zk-AgriSure Protocol</Link>
         {account ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div 
+              onClick={currentChainId !== 11155111 ? ensureWalletNetwork : undefined}
+              style={{ 
+                fontSize: '0.8rem', 
+                padding: '0.35rem 0.75rem', 
+                borderRadius: '20px', 
+                background: currentChainId === 11155111 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.2)',
+                color: currentChainId === 11155111 ? '#4ade80' : '#fca5a5',
+                border: `1px solid ${currentChainId === 11155111 ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.5)'}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: currentChainId !== 11155111 ? 'pointer' : 'default',
+                fontWeight: 600
+              }}
+              title={currentChainId !== 11155111 ? 'Click to switch MetaMask to Sepolia' : 'Connected to Sepolia Testnet'}
+            >
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: currentChainId === 11155111 ? '#4ade80' : '#ef4444' }}></span>
+              {currentChainId === 11155111 ? 'Sepolia Testnet' : (currentChainId === 31337 ? 'Localhost (Click to switch to Sepolia)' : 'Switch to Sepolia')}
+            </div>
+            {accountBalance !== null && (
+              <div style={{ fontSize: '0.85rem', color: '#e2e8f0', background: 'rgba(255,255,255,0.06)', padding: '0.35rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                Balance: <strong>{Number(accountBalance).toFixed(4)} ETH</strong>
+              </div>
+            )}
             <div className={styles.walletBadge}>
               {account.substring(0, 6)}...{account.substring(account.length - 4)}
             </div>
@@ -502,12 +576,29 @@ export default function Dashboard() {
                     <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Your Active Crop Insurance Policy</h3>
                     <p style={{ margin: '0.2rem 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>Secured by Groth16 Zero-Knowledge Commitment</p>
                   </div>
-                  <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                     {hasClaimed ? (
                       <span className={styles.badgeClaimed}>✅ Payout Claimed</span>
                     ) : (
                       <span className={styles.badgeProtected}>🛡️ Active & Protected</span>
                     )}
+                    <button 
+                      type="button" 
+                      onClick={handleResetPolicy} 
+                      title="Reset your on-chain registration to test committing from Step 1 again"
+                      style={{ 
+                        background: 'rgba(239, 68, 68, 0.15)', 
+                        border: '1px solid rgba(239, 68, 68, 0.35)', 
+                        color: '#fca5a5', 
+                        borderRadius: '8px', 
+                        padding: '0.35rem 0.75rem', 
+                        fontSize: '0.8rem', 
+                        cursor: 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      🔄 Reset Policy (Test Mode)
+                    </button>
                   </div>
                 </div>
 
@@ -705,22 +796,46 @@ export default function Dashboard() {
                   </div>
                   
                   <div className={styles.infoBox}>
-                    Decentralized Oracles continuously monitor global seismic and weather telemetry from the USGS and Chainlink oracle networks. When macro disaster thresholds are breached, verified bounding boxes are committed on-chain.
+                    Decentralized Oracles continuously monitor global seismic and climate telemetry from USGS government sensor networks and Chainlink. When macro disaster thresholds are breached, verified bounding boxes are committed on-chain.
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '1.5rem 0', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '1.5rem 0', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                       <span style={{ height: '10px', width: '10px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
-                      <span style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>Chainlink & USGS Telemetry: <b>Active Monitoring</b></span>
+                      <span style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>Decentralized Oracles & USGS: <b>Active Background Telemetry</b></span>
                     </div>
 
                     <button 
-                      onClick={handleRequestOracleData}
-                      className={styles.button}
-                      style={{ width: 'auto', padding: '0.7rem 1.4rem', fontSize: '0.875rem' }}
+                      type="button"
                       disabled={isSyncingOracle}
+                      onClick={async () => {
+                        if (contract && account) {
+                          try {
+                            setIsSyncingOracle(true);
+                            if (farmPosition) {
+                              toast.loading("Syncing with Oracle network...", { id: 'sync' });
+                              await fetch('/api/oracle-trigger', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ lat: farmPosition[0], lon: farmPosition[1] })
+                              });
+                              await checkRegistrationStatus(contract, account);
+                              toast.success("Telemetry synchronized with blockchain!", { id: 'sync' });
+                            } else {
+                              await checkRegistrationStatus(contract, account);
+                              toast.success("Telemetry refreshed!", { id: 'sync' });
+                            }
+                          } catch (e) {
+                            toast.error("Sync failed", { id: 'sync' });
+                          } finally {
+                            setIsSyncingOracle(false);
+                          }
+                        }
+                      }}
+                      className={styles.button}
+                      style={{ width: 'auto', padding: '0.6rem 1.1rem', fontSize: '0.825rem', background: 'rgba(255,255,255,0.08)' }}
                     >
-                      {isSyncingOracle ? 'Querying Oracles...' : '📡 Sync Oracle Telemetry'}
+                      {isSyncingOracle ? 'Syncing...' : '🔄 Sync Telemetry'}
                     </button>
                   </div>
 

@@ -99,6 +99,12 @@ export async function syncWalletWithNode() {
 export function decodeError(err, iface) {
   if (err?.reason) return err.reason;
   if (err?.revert?.args?.length) return String(err.revert.args[0]);
+
+  const rpcMsg = err?.info?.error?.message || err?.error?.message || err?.message || '';
+  if (/outoffunds|insufficient funds|exceeds balance/i.test(rpcMsg)) {
+    return 'Insufficient ETH balance in your wallet to cover the required policy premium and transaction gas fees. Please fund your wallet or choose Tier 1 (0.01 ETH).';
+  }
+
   const data = err?.data || err?.info?.error?.data || err?.error?.data;
   if (iface && typeof data === 'string' && data.startsWith('0x') && data.length > 10) {
     try {
