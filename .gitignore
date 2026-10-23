@@ -1,6 +1,8 @@
 node_modules/
 *.wasm
 *.zkey
+!frontend/public/*.wasm
+!frontend/public/*.zkey
 *.ptau
 *_js/
 *.r1cs
@@ -30,7 +32,13 @@ da9_latex/
 *DA9*
 *report3*
 *.zip
+# Environment variables (keep secrets out of git)
 .env
+.env.*
+!.env.example
+frontend/.env.local
+!frontend/.env.example
+!frontend/.env.local.example
 
 # Scratch and media
 api_out.json

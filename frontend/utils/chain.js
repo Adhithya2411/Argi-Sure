@@ -1,10 +1,10 @@
 import { ethers } from 'ethers';
 
-// Network configuration (override via frontend/.env.local)
-export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 31337);
+// Network configuration (defaults to Sepolia, override via frontend/.env.local)
+export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 11155111);
 export const CHAIN_ID_HEX = '0x' + CHAIN_ID.toString(16);
-export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545';
-export const CHAIN_NAME = process.env.NEXT_PUBLIC_CHAIN_NAME || 'localhost';
+export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
+export const CHAIN_NAME = process.env.NEXT_PUBLIC_CHAIN_NAME || 'sepolia';
 
 let _readProvider = null;
 
@@ -66,10 +66,14 @@ async function isLocalDevNode(provider) {
  *
  * This detects that condition and, ONLY on a local dev node, mines the exact number
  * of empty blocks needed so the node's height passes the wallet's cached height.
- * It does not touch any account, balance or nonce.
+ * On live networks like Sepolia, it safely no-ops.
  */
 export async function syncWalletWithNode() {
   const provider = getReadProvider();
+  if (!(await isLocalDevNode(provider))) {
+    return { resynced: false };
+  }
+
   const [walletHex, nodeBlock] = await Promise.all([
     window.ethereum.request({ method: 'eth_blockNumber' }),
     provider.getBlockNumber(),
@@ -77,13 +81,6 @@ export async function syncWalletWithNode() {
   const walletBlock = parseInt(walletHex, 16);
   // Wallet at or behind node height = in sync (its tracker will catch up normally)
   if (walletBlock <= nodeBlock) return { resynced: false, walletBlock, nodeBlock };
-
-  if (!(await isLocalDevNode(provider))) {
-    throw new Error(
-      `Wallet is at block ${walletBlock} but the node is at ${nodeBlock}. ` +
-      `The wallet is connected to a different chain than ${RPC_URL}.`
-    );
-  }
 
   const missing = walletBlock - nodeBlock + 1;
   await provider.send('hardhat_mine', ['0x' + missing.toString(16)]);
